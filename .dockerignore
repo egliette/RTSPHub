@@ -1,0 +1,76 @@
+# VCS
+.git
+.gitignore
+
+# Docker
+.dockerignore
+Dockerfile.*
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build/packaging
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Type checkers / linters
+.mypy_cache/
+.pytype/
+.pyright/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Environment / secrets
+.env
+.env.*
+.envrc
+*.pem
+*.key
+*.crt
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# C extensions
+*.so
+
+# Caches
+.cache/
+
+# Data or runtime artifacts (adjust as needed)
+/tmp/
+*.sqlite3
+instance/
+
+# Node (if present)
+node_modules/
