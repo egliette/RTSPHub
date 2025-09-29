@@ -6,8 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR%/scripts}"
 
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.dev.yml"
-NETWORK_NAME=""
-CONTAINER_NAME=""
+NETWORK_NAME="person_detection"
+CONTAINER_NAME="rtsp_hub_dev"
+APP_SERVICE="rtsp-hub"
 
 REBUILD=false
 ATTACH_SHELL=false
@@ -92,17 +93,17 @@ if [[ "$REBUILD" == "true" ]]; then
   if [[ -z "${VERSION}" ]]; then VERSION="0.0.0"; fi
 
   echo "Rebuilding app image with VERSION=${VERSION}..."
-  docker-compose -f "$COMPOSE_FILE" build --build-arg VERSION="${VERSION}" app
+  docker-compose -f "$COMPOSE_FILE" build --build-arg VERSION="${VERSION}" "${APP_SERVICE}"
 fi
 
 if [[ "$ATTACH_SHELL" == "true" ]]; then
   echo "Starting app container and attaching to shell..."
   # Ensure app is running and stays alive, then attach a shell
-  docker-compose -f "$COMPOSE_FILE" up -d app
+  docker-compose -f "$COMPOSE_FILE" up -d "${APP_SERVICE}"
   docker exec -it "${CONTAINER_NAME}" /bin/bash
 else
   echo "Starting dev stack with app..."
-  docker-compose -f "$COMPOSE_FILE" up app
+  docker-compose -f "$COMPOSE_FILE" up "${APP_SERVICE}"
 fi
 
 echo "Done."

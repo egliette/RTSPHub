@@ -8,6 +8,7 @@ REPO_ROOT="${SCRIPT_DIR%/scripts}"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
 NETWORK_NAME=""
 CONTAINER_NAME=""
+APP_SERVICE=""
 
 REBUILD=false
 ATTACH_SHELL=false
@@ -99,19 +100,19 @@ if [[ "$REBUILD" == "true" ]]; then
   if [[ -z "${VERSION}" ]]; then VERSION="0.0.0"; fi
 
   echo "Rebuilding app image with VERSION=${VERSION}..."
-  docker-compose -f "$COMPOSE_FILE" build --build-arg VERSION="${VERSION}" app_prod
+  docker-compose -f "$COMPOSE_FILE" build --build-arg VERSION="${VERSION}" "${APP_SERVICE}"
 fi
 
 if [[ "$ATTACH_SHELL" == "true" ]]; then
   echo "Starting app container and attaching to shell..."
   # Ensure app is running and stays alive, then attach a shell
-  docker-compose -f "$COMPOSE_FILE" up -d app_prod
+  docker-compose -f "$COMPOSE_FILE" up -d "${APP_SERVICE}"
   docker exec -it "${CONTAINER_NAME}" /bin/bash
 else
   echo "Starting prod stack with app (${SCALE_WORKERS} workers)..."
   # Update the command to use the specified number of workers
   export WORKERS="${SCALE_WORKERS}"
-  docker-compose -f "$COMPOSE_FILE" run --rm -e WORKERS="${SCALE_WORKERS}" app_prod uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers "${SCALE_WORKERS}"
+  docker-compose -f "$COMPOSE_FILE" run --rm -e WORKERS="${SCALE_WORKERS}" "${APP_SERVICE}" uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers "${SCALE_WORKERS}"
 fi
 
 echo "Done."

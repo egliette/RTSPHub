@@ -10,7 +10,7 @@ RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 RUN apt-get update && \
-    apt-get install gcc g++ libpq-dev -y && \
+    apt-get install -y gcc g++ libpq-dev ffmpeg curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

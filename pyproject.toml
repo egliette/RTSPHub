@@ -3,11 +3,11 @@ requires = ["setuptools >= 61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = ""
+name = "RTSPHub"
 dynamic = ["version"]
-description = "n"
+description = "A FastAPI-based recording service that connects to RTSP streams, proxies them via mediamtx, and provides APIs to record and store videos locally or in MinIO."
 authors = [
-    {name = "", email = ""}
+    {name = "Egliette", email = "leminhtu74@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.8"
@@ -23,6 +23,10 @@ dependencies = [
     "python-dotenv==1.0.0",
     "minio==7.2.0",
     "alembic>=1.13.0",
+    "requests>=2.31.0",
+    "opencv-python-headless>=4.8.0",
+    "ffmpeg-python>=0.2.0",
+    "numpy>=1.26.0",
 ]
 
 [project.optional-dependencies]

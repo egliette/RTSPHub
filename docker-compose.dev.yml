@@ -1,0 +1,43 @@
+services:
+  media-service:
+    image: bluenviron/mediamtx:1.13.1
+    container_name: media-service
+    environment:
+      - MTX_AUTHINTERNALUSERS_0_USER=${MEDIA_USERNAME}
+      - MTX_AUTHINTERNALUSERS_0_PASS=${MEDIA_PASSWORD}
+      - MTX_AUTHINTERNALUSERS_0_PERMISSIONS_0_ACTION=publish
+      - MTX_AUTHINTERNALUSERS_0_PERMISSIONS_1_ACTION=read
+      - MTX_AUTHINTERNALUSERS_0_PERMISSIONS_2_ACTION=playback
+      - MTX_AUTHINTERNALUSERS_0_PERMISSIONS_3_ACTION=api
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml
+      - ./assets/record:/record
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      - person_detection
+
+  rtsp-hub:
+    image: rtsp-hub:dev
+    build:
+      dockerfile: Dockerfile
+      target: development
+      args:
+        APP_UID: ${APP_UID}
+        APP_GID: ${APP_GID}
+        LOG_DIR: ${LOG_DIR}
+    container_name: rtsp_hub_dev
+    volumes:
+      - ./app:/app/app
+      - ./assets:/app/assets
+      - ./logs:/app/logs
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - media-service
+    networks:
+      - person_detection
+
+networks:
+  person_detection:
+    external: true
