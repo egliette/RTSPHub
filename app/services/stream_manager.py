@@ -1,0 +1,221 @@
+import os
+import subprocess
+import threading
+import time
+from typing import Dict, Optional
+
+from app.core.enums import StreamState
+
+
+class StreamWorker:
+    def __init__(
+        self,
+        stream_id: str,
+        video_path: str,
+        output_url: str,
+        restart_backoff_seconds: int,
+    ):
+        """Initialize a worker responsible for publishing a looped file to an output URL.
+
+        Args:
+            stream_id: Unique identifier for the logical stream.
+            video_path: Local path to the input media file.
+            output_url: Target output URL (e.g., rtmp://host/app/stream or rtsp://...).
+            restart_backoff_seconds: Backoff delay before restarting after exit/error.
+        """
+        self.stream_id = stream_id
+        self.video_path = video_path
+        self.output_url = output_url
+        self.restart_backoff_seconds = restart_backoff_seconds
+        self.stop_event = threading.Event()
+        self.ffmpeg_process: Optional[subprocess.Popen] = None
+        self.state: StreamState = StreamState.error
+        self.worker_thread = threading.Thread(
+            target=self._run_loop, name=f"StreamWorker-{stream_id}", daemon=True
+        )
+
+    def start(self) -> None:
+        """Start the worker thread if it is not already running."""
+        if not self.worker_thread.is_alive():
+            self.worker_thread.start()
+
+    def stop(self) -> None:
+        """Signal the worker to stop and wait for process/thread cleanup."""
+        self.stop_event.set()
+        if self.ffmpeg_process and self.ffmpeg_process.poll() is None:
+            try:
+                self.ffmpeg_process.terminate()
+                try:
+                    self.ffmpeg_process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.ffmpeg_process.kill()
+            except Exception:
+                pass
+        if self.worker_thread.is_alive():
+            self.worker_thread.join(timeout=5)
+
+    def get_state(self) -> StreamState:
+        """Return the current state of the worker.
+
+        Returns:
+            The `StreamState` representing the worker's health.
+        """
+        return self.state
+
+    def _spawn_ffmpeg_process(self) -> subprocess.Popen:
+        """Spawn the ffmpeg process to publish the input file in a loop.
+
+        ffmpeg -re -stream_loop -1 -i <video_path> -c copy -f rtsp -rtsp_transport <output_url>
+
+        Returns:
+            The started subprocess running ffmpeg.
+        """
+        cmd = [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-re",
+            "-stream_loop",
+            "-1",
+            "-i",
+            self.video_path,
+            "-c",
+            "copy",
+            "-f",
+            "rtsp",
+            self.output_url,
+        ]
+        process = subprocess.Popen(
+            cmd,
+            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+        )
+        return process
+
+    def _run_once(self) -> None:
+        """Run one ffmpeg session until it exits or a stop is requested."""
+        self.state = StreamState.running
+        self.ffmpeg_process = self._spawn_ffmpeg_process()
+
+        try:
+            assert self.ffmpeg_process.stderr is not None
+            for line in iter(self.ffmpeg_process.stderr.readline, b""):
+                if self.stop_event.is_set():
+                    break
+                line_str = line.decode(errors="ignore").strip()
+                if line_str:
+                    print("FFmpeg error:", line_str)
+                ret = self.ffmpeg_process.poll()
+                if ret is not None:
+                    break
+                time.sleep(0.1)
+        finally:
+            if self.ffmpeg_process and self.ffmpeg_process.poll() is None:
+                try:
+                    self.ffmpeg_process.terminate()
+                except Exception:
+                    pass
+
+    def _run_loop(self) -> None:
+        """Main loop that restarts ffmpeg with backoff until stopped."""
+        while not self.stop_event.is_set():
+            self._run_once()
+            if self.stop_event.is_set():
+                break
+            self.state = StreamState.error
+            for _ in range(self.restart_backoff_seconds):
+                if self.stop_event.is_set():
+                    break
+                time.sleep(1)
+
+
+class StreamManager:
+    def __init__(self, restart_backoff_seconds: int = 10) -> None:
+        """Manage lifecycle of multiple `StreamWorker` instances.
+
+        Args:
+            restart_backoff_seconds: Delay used by workers before restart after failure.
+        """
+        self.restart_backoff_seconds = restart_backoff_seconds
+        self._lock = threading.Lock()
+        self._workers: Dict[str, StreamWorker] = {}
+        self._next_id: int = 1
+
+    def _generate_stream_id(self) -> str:
+        """Generate a unique, auto-incrementing stream identifier."""
+        while True:
+            candidate = f"stream-{self._next_id}"
+            self._next_id += 1
+            if candidate not in self._workers:
+                return candidate
+
+    def add_stream(
+        self, video_path: str, output_url: str, stream_id: Optional[str] = None
+    ) -> str:
+        """Create and start a worker for a given file-backed stream.
+
+        Args:
+            video_path: Local path to the media file.
+            output_url: Full output URL for this stream.
+            stream_id: Optional unique identifier. If not provided, one is auto-generated.
+
+        Raises:
+            FileNotFoundError: If the video file does not exist.
+            ValueError: If a worker with the same stream_id already exists.
+            ValueError: If `output_url` is not provided.
+
+        Returns:
+            The assigned stream identifier.
+        """
+        if not os.path.isfile(video_path):
+            raise FileNotFoundError(f"Video not found: {video_path}")
+        with self._lock:
+            assigned_id = stream_id or self._generate_stream_id()
+            if assigned_id in self._workers:
+                raise ValueError("stream_id already exists")
+            if not output_url:
+                raise ValueError("output_url is required")
+            target_url = output_url
+            worker = StreamWorker(
+                assigned_id, video_path, target_url, self.restart_backoff_seconds
+            )
+            self._workers[assigned_id] = worker
+            worker.start()
+            return assigned_id
+
+    def remove_stream(self, stream_id: str) -> None:
+        """Stop and remove a worker for a given stream_id if it exists."""
+        with self._lock:
+            worker = self._workers.pop(stream_id, None)
+        if worker:
+            worker.stop()
+
+    def list_streams(self) -> Dict[str, Dict[str, str]]:
+        """List current workers with their video path and state."""
+        with self._lock:
+            return {
+                sid: {
+                    "video_path": w.video_path,
+                    "state": w.get_state().value,
+                }
+                for sid, w in self._workers.items()
+            }
+
+    def get_state(self, stream_id: str) -> StreamState:
+        """Get the `StreamState` for a specific stream.
+
+        Args:
+            stream_id: Identifier of the stream to query.
+
+        Returns:
+            The current `StreamState`.
+
+        Raises:
+            KeyError: If the stream_id is not found.
+        """
+        with self._lock:
+            worker = self._workers.get(stream_id)
+            if not worker:
+                raise KeyError("stream not found")
+            return worker.get_state()
