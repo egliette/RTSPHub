@@ -73,3 +73,46 @@ def test_add_stream_with_explicit_id_and_remove(
 
     del_resp = client.delete(f"/api/streams/{explicit_id}")
     assert del_resp.status_code == 204, del_resp.text
+
+
+def test_add_two_list_and_remove_flow(client: TestClient, make_add_stream_payload):
+    existing = client.get("/api/streams")
+    assert existing.status_code == 200, existing.text
+    for item in existing.json():
+        client.delete(f"/api/streams/{item['stream_id']}")
+
+    a_id, b_id = "test-stream-a", "test-stream-b"
+    resp_a = client.post(
+        "/api/streams",
+        json=make_add_stream_payload(stream_id=a_id, path=a_id),
+    )
+    assert resp_a.status_code == 200, resp_a.text
+
+    resp_b = client.post(
+        "/api/streams",
+        json=make_add_stream_payload(stream_id=b_id, path=b_id),
+    )
+    assert resp_b.status_code == 200, resp_b.text
+
+    list_resp = client.get("/api/streams")
+    assert list_resp.status_code == 200, list_resp.text
+    items = list_resp.json()
+    assert len(items) == 2
+    ids = {item["stream_id"] for item in items}
+    assert {a_id, b_id} == ids
+
+    del_a = client.delete(f"/api/streams/{a_id}")
+    assert del_a.status_code == 204, del_a.text
+
+    list_after_one = client.get("/api/streams")
+    assert list_after_one.status_code == 200, list_after_one.text
+    items_after_one = list_after_one.json()
+    assert len(items_after_one) == 1
+    assert items_after_one[0]["stream_id"] == b_id
+
+    del_b = client.delete(f"/api/streams/{b_id}")
+    assert del_b.status_code == 204, del_b.text
+
+    list_after_all = client.get("/api/streams")
+    assert list_after_all.status_code == 200, list_after_all.text
+    assert list_after_all.json() == []

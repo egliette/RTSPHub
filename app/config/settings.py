@@ -43,5 +43,4 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env"}
 
 
-# Optional singleton-style instance for places that prefer importing a prebuilt config
 settings = Settings()
