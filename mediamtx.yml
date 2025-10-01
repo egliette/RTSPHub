@@ -25,10 +25,10 @@ pathDefaults:
   # This prevents RAM exhaustion.
   recordMaxPartSize: 50M
   # Minimum duration of each segment.
-  recordSegmentDuration: 1m
+  recordSegmentDuration: 2m
   # Delete segments after this timespan.
   # Set to 0s to disable automatic deletion.
-  recordDeleteAfter: 5m
+  recordDeleteAfter: 10m
 
 
 ###############################################

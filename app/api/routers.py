@@ -19,12 +19,12 @@ def add_stream(req: AddStreamRequest):
         base = settings.media_server_rtsp_base_url.rstrip("/")
         output_url = f"{base}/{req.path}"
         assigned_id = manager.add_stream(
-            video_path=req.video_path,
+            source_uri=req.source_uri,
             output_url=output_url,
             stream_id=req.stream_id,
         )
         state = manager.get_state(assigned_id)
-        return StreamInfo(stream_id=assigned_id, video_path=req.video_path, state=state)
+        return StreamInfo(stream_id=assigned_id, source_uri=req.source_uri, state=state)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
@@ -37,7 +37,7 @@ def list_streams():
     return [
         StreamInfo(
             stream_id=sid,
-            video_path=info["video_path"],
+            source_uri=info["source_uri"],
             state=StreamState(info["state"]),
         )
         for sid, info in items.items()

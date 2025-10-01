@@ -18,21 +18,21 @@ def client() -> Iterator[TestClient]:
 
 
 @pytest.fixture(scope="session")
-def video_path() -> str:
+def source_uri() -> str:
     path = "/app/assets/videos/big_buck_bunny.mp4"
     return path
 
 
 @pytest.fixture()
-def make_add_stream_payload(video_path):
+def make_add_stream_payload(source_uri):
 
     def _make(
-        video_path: str = "/app/assets/videos/big_buck_bunny.mp4",
+        source_uri: str = "/app/assets/videos/big_buck_bunny.mp4",
         path: str = "test-stream",
         stream_id: str | None = None,
     ):
         model = AddStreamRequest(
-            video_path=video_path,
+            source_uri=source_uri,
             stream_id=stream_id,
             path=path,
         )

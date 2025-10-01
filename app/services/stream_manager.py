@@ -11,7 +11,7 @@ class StreamWorker:
     def __init__(
         self,
         stream_id: str,
-        video_path: str,
+        source_uri: str,
         output_url: str,
         restart_backoff_seconds: int,
     ):
@@ -19,12 +19,12 @@ class StreamWorker:
 
         Args:
             stream_id: Unique identifier for the logical stream.
-            video_path: Local path to the input media file.
+            source_uri: Local path to the input media file, or an rtsp:// URL.
             output_url: Target output URL (e.g., rtmp://host/app/stream or rtsp://...).
             restart_backoff_seconds: Backoff delay before restarting after exit/error.
         """
         self.stream_id = stream_id
-        self.video_path = video_path
+        self.source_uri = source_uri
         self.output_url = output_url
         self.restart_backoff_seconds = restart_backoff_seconds
         self.stop_event = threading.Event()
@@ -70,16 +70,18 @@ class StreamWorker:
         Returns:
             The started subprocess running ffmpeg.
         """
+        is_rtsp_input = self.source_uri.lower().startswith("rtsp://")
         cmd = [
             "ffmpeg",
             "-hide_banner",
             "-loglevel",
             "error",
-            "-re",
-            "-stream_loop",
-            "-1",
+        ]
+        if not is_rtsp_input:
+            cmd += ["-re", "-stream_loop", "-1"]
+        cmd += [
             "-i",
-            self.video_path,
+            self.source_uri,
             "-c",
             "copy",
             "-f",
@@ -151,12 +153,12 @@ class StreamManager:
                 return candidate
 
     def add_stream(
-        self, video_path: str, output_url: str, stream_id: Optional[str] = None
+        self, source_uri: str, output_url: str, stream_id: Optional[str] = None
     ) -> str:
         """Create and start a worker for a given file-backed stream.
 
         Args:
-            video_path: Local path to the media file.
+            source_uri: Local file path or rtsp:// URL for the source.
             output_url: Full output URL for this stream.
             stream_id: Optional unique identifier. If not provided, one is auto-generated.
 
@@ -168,8 +170,9 @@ class StreamManager:
         Returns:
             The assigned stream identifier.
         """
-        if not os.path.isfile(video_path):
-            raise FileNotFoundError(f"Video not found: {video_path}")
+        is_rtsp_input = source_uri.lower().startswith("rtsp://")
+        if not is_rtsp_input and not os.path.isfile(source_uri):
+            raise FileNotFoundError(f"Video not found: {source_uri}")
         with self._lock:
             assigned_id = stream_id or self._generate_stream_id()
             if assigned_id in self._workers:
@@ -178,7 +181,7 @@ class StreamManager:
                 raise ValueError("output_url is required")
             target_url = output_url
             worker = StreamWorker(
-                assigned_id, video_path, target_url, self.restart_backoff_seconds
+                assigned_id, source_uri, target_url, self.restart_backoff_seconds
             )
             self._workers[assigned_id] = worker
             worker.start()
@@ -196,7 +199,7 @@ class StreamManager:
         with self._lock:
             return {
                 sid: {
-                    "video_path": w.video_path,
+                    "source_uri": w.source_uri,
                     "state": w.get_state().value,
                 }
                 for sid, w in self._workers.items()

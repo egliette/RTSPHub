@@ -6,8 +6,8 @@ from app.core.enums import StreamState
 
 
 class AddStreamRequest(BaseModel):
-    video_path: str = Field(
-        description="Local path to the source video file to loop and publish"
+    source_uri: str = Field(
+        description="Local video file path to loop, or an existing rtsp:// URL"
     )
     stream_id: Optional[str] = Field(
         default=None, description="Optional stream id; auto-assigned if omitted"
@@ -19,7 +19,7 @@ class AddStreamRequest(BaseModel):
 
 class StreamInfo(BaseModel):
     stream_id: str
-    video_path: str
+    source_uri: str
     state: StreamState
 
 

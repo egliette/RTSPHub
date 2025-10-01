@@ -2,6 +2,7 @@ import time
 
 from fastapi.testclient import TestClient
 
+from app.config.settings import settings
 from app.core.enums import StreamState
 
 
@@ -116,3 +117,53 @@ def test_add_two_list_and_remove_flow(client: TestClient, make_add_stream_payloa
     list_after_all = client.get("/api/streams")
     assert list_after_all.status_code == 200, list_after_all.text
     assert list_after_all.json() == []
+
+
+def test_proxy_rtsp_from_rtsp_source(client: TestClient, make_add_stream_payload):
+    # Ensure no interference from prior tests
+    existing = client.get("/api/streams")
+    assert existing.status_code == 200, existing.text
+    for item in existing.json():
+        client.delete(f"/api/streams/{item['stream_id']}")
+
+    # 1) Create primary RTSP from a local video file
+    src_path = "proxy-src"
+    src_id = "proxy-src-id"
+    create_src = client.post(
+        "/api/streams",
+        json=make_add_stream_payload(stream_id=src_id, path=src_path),
+    )
+    assert create_src.status_code == 200, create_src.text
+
+    # Build the RTSP URL published by the first stream
+    base = settings.media_server_rtsp_base_url.rstrip("/")
+    src_rtsp_url = f"{base}/{src_path}"
+
+    # 2) Create a proxy RTSP using the first stream's RTSP as source
+    proxy_path = "proxy-dst"
+    proxy_id = "proxy-dst-id"
+    create_proxy = client.post(
+        "/api/streams",
+        json=make_add_stream_payload(
+            source_uri=src_rtsp_url, stream_id=proxy_id, path=proxy_path
+        ),
+    )
+    assert create_proxy.status_code == 200, create_proxy.text
+
+    # 3) Verify both streams exist
+    listed = client.get("/api/streams")
+    assert listed.status_code == 200, listed.text
+    ids = {item["stream_id"] for item in listed.json()}
+    assert {src_id, proxy_id}.issubset(ids)
+
+    # 4) Cleanup: remove both streams
+    del_proxy = client.delete(f"/api/streams/{proxy_id}")
+    assert del_proxy.status_code == 204, del_proxy.text
+    del_src = client.delete(f"/api/streams/{src_id}")
+    assert del_src.status_code == 204, del_src.text
+
+    # 5) Confirm removal
+    listed_final = client.get("/api/streams")
+    assert listed_final.status_code == 200, listed_final.text
+    final_ids = {item["stream_id"] for item in listed_final.json()}
+    assert src_id not in final_ids and proxy_id not in final_ids
