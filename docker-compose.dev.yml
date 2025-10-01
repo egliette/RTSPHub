@@ -28,12 +28,11 @@ services:
         LOG_DIR: ${LOG_DIR}
     container_name: rtsp_hub_dev
     environment:
-      - RTSP_HUB_API_TOKEN=${API_TOKEN}
-      - RTSP_HUB_MEDIA_SERVER_HOST=${MEDIA_SERVER_HOST}
-      - RTSP_HUB_MEDIA_SERVER_PORT=${MEDIA_SERVER_PORT}
-      - RTSP_HUB_MEDIA_USERNAME=${MEDIA_USERNAME}
-      - RTSP_HUB_MEDIA_PASSWORD=${MEDIA_PASSWORD}
-      - RTSP_HUB_RTSP_TRANSPORT=${RTSP_TRANSPORT}
+      - API_TOKEN=${API_TOKEN}
+      - MEDIA_SERVER_HOST=${MEDIA_SERVER_HOST}
+      - MEDIA_SERVER_PORT=${MEDIA_SERVER_PORT}
+      - MEDIA_USERNAME=${MEDIA_USERNAME}
+      - MEDIA_PASSWORD=${MEDIA_PASSWORD}
     volumes:
       - ./app:/app/app
       - ./assets:/app/assets
