@@ -1,11 +1,8 @@
-api: yes
-apiEncryption: no
+###############################################
+# Default path settings
 
-rtsp: yes
-rtspTransports: [udp, multicast, tcp]
-
-writeTimeout: 10s
-
+# Settings in "pathDefaults" are applied anywhere,
+# unless they are overridden in "paths".
 pathDefaults:
   ###############################################
   # Default path settings -> Record
@@ -32,3 +29,56 @@ pathDefaults:
   # Delete segments after this timespan.
   # Set to 0s to disable automatic deletion.
   recordDeleteAfter: 5m
+
+
+###############################################
+# Global settings -> Authentication
+
+# Authentication method. Available values are:
+# * internal: credentials are stored in the configuration file
+# * http: an external HTTP URL is contacted to perform authentication
+# * jwt: an external identity server provides authentication through JWTs
+authMethod: internal
+
+# Internal authentication.
+# list of users.
+authInternalUsers:
+  # Default unprivileged user.
+  # Username. 'any' means any user, including anonymous ones.
+- user: any
+  # IPs or networks allowed to use this user. An empty list means any IP.
+  ips: []
+  # List of permissions.
+  permissions:
+
+
+###############################################
+# Global settings -> RTSP server
+
+# Enable publishing and reading streams with the RTSP protocol.
+rtsp: yes
+# List of enabled RTSP transport protocols.
+# UDP is the most performant, but doesn't work when there's a NAT/firewall between
+# server and clients.
+# UDP-multicast allows to save bandwidth when clients are all in the same LAN.
+# TCP is the most versatile.
+# The handshake is always performed with TCP.
+rtspTransports: [tcp]
+
+###############################################
+# Path settings
+
+# Settings in "paths" are applied to specific paths, and the map key
+# is the name of the path.
+# Any setting in "pathDefaults" can be overridden here.
+# It's possible to use regular expressions by using a tilde as prefix,
+# for example "~^(test1|test2)$" will match both "test1" and "test2",
+# for example "~^prefix" will match all paths that start with "prefix".
+paths:
+  # example:
+  # my_camera:
+  #   source: rtsp://my_camera
+
+  # Settings under path "all_others" are applied to all paths that
+  # do not match another entry.
+  all_others:

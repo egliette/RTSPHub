@@ -1,6 +1,6 @@
 services:
   media-service:
-    image: bluenviron/mediamtx:1.13.1
+    image: bluenviron/mediamtx:1.15.1
     container_name: media-service
     environment:
       - MTX_AUTHINTERNALUSERS_0_USER=${MEDIA_USERNAME}
@@ -27,6 +27,13 @@ services:
         APP_GID: ${APP_GID}
         LOG_DIR: ${LOG_DIR}
     container_name: rtsp_hub_dev
+    environment:
+      - RTSP_HUB_API_TOKEN=${API_TOKEN}
+      - RTSP_HUB_MEDIA_SERVER_HOST=${MEDIA_SERVER_HOST}
+      - RTSP_HUB_MEDIA_SERVER_PORT=${MEDIA_SERVER_PORT}
+      - RTSP_HUB_MEDIA_USERNAME=${MEDIA_USERNAME}
+      - RTSP_HUB_MEDIA_PASSWORD=${MEDIA_PASSWORD}
+      - RTSP_HUB_RTSP_TRANSPORT=${RTSP_TRANSPORT}
     volumes:
       - ./app:/app/app
       - ./assets:/app/assets
@@ -37,7 +44,7 @@ services:
       - media-service
     networks:
       - person_detection
-
+      
 networks:
   person_detection:
     external: true
