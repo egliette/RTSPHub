@@ -50,6 +50,8 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 FROM base as test
 
+COPY assets/videos/big_buck_bunny.mp4 ./assets/videos/big_buck_bunny.mp4
+
 RUN chown -R app:app /app
 USER app
 
