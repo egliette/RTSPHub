@@ -1,34 +1,36 @@
+# Note: This part is already set via environment variables.
+#       The commented section is for reference only.
 ###############################################
 # Default path settings
 
 # Settings in "pathDefaults" are applied anywhere,
 # unless they are overridden in "paths".
-pathDefaults:
-  ###############################################
-  # Default path settings -> Record
-
-  # Record streams to disk.
-  record: yes
-  # Path of recording segments.
-  # Extension is added automatically.
-  # Available variables are %path (path name), %Y %m %d (year, month, day),
-  # %H %M %S (hours, minutes, seconds), %f (microseconds), %z (time zone), %s (unix epoch).
-  recordPath: ./record/%path/%Y-%m-%d_%H-%M-%S
-  # Format of recorded segments.
-  # Available formats are "fmp4" (fragmented MP4) and "mpegts" (MPEG-TS).
-  recordFormat: fmp4
-  # fMP4 segments are concatenation of small MP4 files (parts), each with this duration.
-  # MPEG-TS segments are concatenation of 188-bytes packets, flushed to disk with this period.
-  # When a system failure occurs, the last part gets lost.
-  # Therefore, the part duration is equal to the RPO (recovery point objective).
-  recordPartDuration: 1s
-  # This prevents RAM exhaustion.
-  recordMaxPartSize: 50M
-  # Minimum duration of each segment.
-  recordSegmentDuration: 2m
-  # Delete segments after this timespan.
-  # Set to 0s to disable automatic deletion.
-  recordDeleteAfter: 10m
+# pathDefaults:
+#   ###############################################
+#   # Default path settings -> Record
+#
+#   # Record streams to disk.
+#   record: yes
+#   # Path of recording segments.
+#   # Extension is added automatically.
+#   # Available variables are %path (path name), %Y %m %d (year, month, day),
+#   # %H %M %S (hours, minutes, seconds), %f (microseconds), %z (time zone), %s (unix epoch).
+#   recordPath: ./record/%path/%Y-%m-%d_%H-%M-%S
+#   # Format of recorded segments.
+#   # Available formats are "fmp4" (fragmented MP4) and "mpegts" (MPEG-TS).
+#   recordFormat: fmp4
+#   # fMP4 segments are concatenation of small MP4 files (parts), each with this duration.
+#   # MPEG-TS segments are concatenation of 188-bytes packets, flushed to disk with this period.
+#   # When a system failure occurs, the last part gets lost.
+#   # Therefore, the part duration is equal to the RPO (recovery point objective).
+#   recordPartDuration: 1s
+#   # This prevents RAM exhaustion.
+#   recordMaxPartSize: 50M
+#   # Minimum duration of each segment.
+#   recordSegmentDuration: 2m
+#   # Delete segments after this timespan.
+#   # Set to 0s to disable automatic deletion.
+#   recordDeleteAfter: 10m
 
 
 ###############################################
