@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     RESTART_BACKOFF_SECONDS: int = Field(default=5, ge=1)
     FFMPEG_PATH: str = Field(default="ffmpeg")
 
+    # Video processing
+    VIDEO_RECORD_PATH: str = Field(default="/app/assets/record")
+    VIDEO_PROCESSED_PATH: str = Field(default="/app/assets/processed_videos")
+    RECORD_SEGMENT_DURATION: str = Field(default="1h")
+
     @property
     def media_server_rtsp_base_url(self) -> str:
         """Construct RTSP base URL with credentials."""
