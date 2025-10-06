@@ -18,7 +18,7 @@ services:
       - MTX_AUTHINTERNALUSERS_0_PERMISSIONS_3_ACTION=api
     volumes:
       - ./mediamtx.yml:/mediamtx.yml
-      - ./assets/record:/record
+      - /assets/record:${VIDEO_RECORD_PATH}
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
@@ -40,6 +40,9 @@ services:
       - MEDIA_SERVER_PORT=${MEDIA_SERVER_PORT}
       - MEDIA_USERNAME=${MEDIA_USERNAME}
       - MEDIA_PASSWORD=${MEDIA_PASSWORD}
+      - VIDEO_RECORD_PATH=${VIDEO_RECORD_PATH}
+      - VIDEO_PROCESSED_PATH=${VIDEO_PROCESSED_PATH}
+      - RECORD_SEGMENT_DURATION=${RECORD_SEGMENT_DURATION}
     volumes:
       - ./app:/app/app
       - ./assets:/app/assets

@@ -1,4 +1,5 @@
 assets/record
+app/dev
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

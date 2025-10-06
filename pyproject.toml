@@ -38,7 +38,7 @@ test = [
 
 [tool.pytest.ini_options]
 markers = [
-    "model_dependent: marks tests as requiring external models (deselect with '-m \"not model_dependent\"')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 
 [tool.setuptools]
