@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import router
+from app.api import router
 from app.config.settings import settings
 from app.utils.security import require_api_token
 
