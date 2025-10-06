@@ -71,18 +71,26 @@ class StreamWorker:
             The started subprocess running ffmpeg.
         """
         is_rtsp_input = self.source_uri.lower().startswith("rtsp://")
-        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-rtsp_transport", "tcp"]
-        if not is_rtsp_input:
-            cmd += ["-re", "-stream_loop", "-1"]
-        cmd += [
-            "-i",
-            self.source_uri,
-            "-c",
-            "copy",
-            "-f",
-            "rtsp",
-            self.output_url,
-        ]
+
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error"]
+
+        if is_rtsp_input:
+            cmd.extend(["-rtsp_transport", "tcp"])
+        else:
+            cmd.extend(["-re", "-stream_loop", "-1"])
+
+        cmd.extend(
+            [
+                "-i",
+                self.source_uri,
+                "-c",
+                "copy",
+                "-f",
+                "rtsp",
+                self.output_url,
+            ]
+        )
+
         process = subprocess.Popen(
             cmd,
             stderr=subprocess.PIPE,
