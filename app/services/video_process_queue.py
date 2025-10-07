@@ -171,7 +171,7 @@ class VideoProcessWorker:
     ) -> None:
         """Create a trimmed segment from a video file.
 
-        Trims the provided source video to the intersection of \(start_dt, end_dt\)
+        Trims the provided source video to the intersection of (start_dt, end_dt)
         relative to the video's own start time and writes the result to
         `output_path`. If the requested range covers the entire source, the file
         is copied instead of being re-encoded/trimmed.

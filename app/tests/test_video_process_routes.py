@@ -146,7 +146,9 @@ class TestVideoProcessRoutes:
         )
 
         create_response = client.post("/api/video-process/tasks", json=request_data)
-        assert create_response.status_code == 200
+        assert (
+            create_response.status_code == 200
+        ), f"Expected status 200, got {create_response.status_code}. Response: {create_response.text}"
         task_id = create_response.json()["task_id"]
 
         # Poll for completion
@@ -196,7 +198,9 @@ class TestVideoProcessRoutes:
         )
 
         create_response = client.post("/api/video-process/tasks", json=request_data)
-        assert create_response.status_code == 200
+        assert (
+            create_response.status_code == 200
+        ), f"Expected status 200, got {create_response.status_code}. Response: {create_response.text}"
         task_id = create_response.json()["task_id"]
 
         # Poll for completion
@@ -244,7 +248,9 @@ class TestVideoProcessRoutes:
             start_time=start_str, end_time=end_str
         )
         create_response = client.post("/api/video-process/tasks", json=request_data)
-        assert create_response.status_code == 200
+        assert (
+            create_response.status_code == 200
+        ), f"Expected status 200, got {create_response.status_code}. Response: {create_response.text}"
         task_id = create_response.json()["task_id"]
         import time
 

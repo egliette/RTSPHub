@@ -68,10 +68,10 @@ class VideoProcessService:
                 # Ignore files that don't match expected datetime filename pattern
                 continue
         if parsed_datetimes:
-            oldest_video_dt = min(parsed_datetimes)
+            oldest_video_dt = max(parsed_datetimes)
             if not (start_dt < oldest_video_dt):
                 raise ValueError(
-                    "Start time must be earlier than the oldest available video: "
+                    f"Start time {start_dt} must be earlier than the oldest available video: "
                     f"{oldest_video_dt.strftime('%Y-%m-%d %H:%M:%S')}"
                 )
 
