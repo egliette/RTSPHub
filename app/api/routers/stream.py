@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.config.settings import settings
-from app.core.enums import StreamState
+from app.models.stream import StreamState
 from app.schema.streaming import AddStreamRequest, HealthResponse, StreamInfo
 from app.services.stream_manager import StreamManager
 

@@ -3,7 +3,7 @@ import time
 from fastapi.testclient import TestClient
 
 from app.config.settings import settings
-from app.core.enums import StreamState
+from app.models.stream import StreamState
 
 
 def test_add_stream_success(client: TestClient, make_add_stream_payload):

@@ -4,7 +4,7 @@ import threading
 import time
 from typing import Dict, Optional
 
-from app.core.enums import StreamState
+from app.models.stream import StreamState
 
 
 class StreamWorker:

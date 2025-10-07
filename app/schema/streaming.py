@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.core.enums import StreamState
+from app.models.stream import StreamState
 
 
 class AddStreamRequest(BaseModel):
