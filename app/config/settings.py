@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    """Centralized application configuration."""
+    DATABASE_URL: str = "postgresql://user:password@localhost:5432/"
 
     # API / App metadata
     API_PREFIX: str = "/api"

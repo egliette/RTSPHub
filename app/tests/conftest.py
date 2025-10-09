@@ -16,7 +16,6 @@ from app.schema.video_process import VideoProcessRequest
 def client() -> Iterator[TestClient]:
     token = settings.API_TOKEN
     headers = {"Authorization": f"Bearer {token}"} if token else {}
-    app.dependency_overrides = {}
     with TestClient(app, headers=headers) as c:
         yield c
 

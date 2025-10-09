@@ -1,20 +1,32 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.config.settings import settings
+from app.crud.stream import StreamDAO
 from app.models.stream import StreamState
 from app.schema.streaming import AddStreamRequest, HealthResponse, StreamInfo
 from app.services.stream_manager import StreamManager
 
 router = APIRouter()
 
-manager = StreamManager(
-    restart_backoff_seconds=settings.RESTART_BACKOFF_SECONDS,
-)
+_manager: StreamManager | None = None
+
+
+def get_stream_manager(repo: StreamDAO = Depends(StreamDAO)) -> StreamManager:
+    """Get or create StreamManager instance with DAO dependency."""
+    global _manager
+    if _manager is None:
+        _manager = StreamManager(
+            restart_backoff_seconds=settings.RESTART_BACKOFF_SECONDS,
+            repo=repo,
+        )
+    return _manager
 
 
 @router.post("/streams", response_model=StreamInfo)
-def add_stream(req: AddStreamRequest):
+def add_stream(
+    req: AddStreamRequest, manager: StreamManager = Depends(get_stream_manager)
+):
     try:
         base = settings.media_server_rtsp_base_url.rstrip("/")
         output_url = f"{base}/{req.path}"
@@ -32,7 +44,7 @@ def add_stream(req: AddStreamRequest):
 
 
 @router.get("/streams")
-def list_streams():
+def list_streams(manager: StreamManager = Depends(get_stream_manager)):
     items = manager.list_streams()
     return [
         StreamInfo(
@@ -45,13 +57,13 @@ def list_streams():
 
 
 @router.delete("/streams/{stream_id}", status_code=204)
-def remove_stream(stream_id: str):
+def remove_stream(stream_id: str, manager: StreamManager = Depends(get_stream_manager)):
     manager.remove_stream(stream_id)
     return JSONResponse(status_code=204, content=None)
 
 
 @router.get("/streams/{stream_id}/health", response_model=HealthResponse)
-def health_check(stream_id: str):
+def health_check(stream_id: str, manager: StreamManager = Depends(get_stream_manager)):
     try:
         state = manager.get_state(stream_id)
         return HealthResponse(stream_id=stream_id, state=state)

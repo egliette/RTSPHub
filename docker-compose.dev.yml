@@ -1,21 +1,41 @@
 services:
+  postgres:
+    image: postgres:15
+    container_name: rtsp_hub_postgres_dev
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}_dev
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - person_detection
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   media-service:
     image: bluenviron/mediamtx:1.15.1
     container_name: media-service
     environment:
-      - MTX_PATHDEFAULTS_RECORD=${RECORD_ENABLED}
-      - MTX_PATHDEFAULTS_RECORDPATH=${RECORD_PATH}
-      - MTX_PATHDEFAULTS_RECORDFORMAT=${RECORD_FORMAT}
-      - MTX_PATHDEFAULTS_RECORDPARTDURATION=${RECORD_PART_DURATION}
-      - MTX_PATHDEFAULTS_RECORDMAXPARTSIZE=${RECORD_MAX_PART_SIZE}
-      - MTX_PATHDEFAULTS_RECORDSEGMENTDURATION=${RECORD_SEGMENT_DURATION}
-      - MTX_PATHDEFAULTS_RECORDDELETEAFTER=${RECORD_DELETE_AFTER}
-      - MTX_AUTHINTERNALUSERS_0_USER=${MEDIA_USERNAME}
-      - MTX_AUTHINTERNALUSERS_0_PASS=${MEDIA_PASSWORD}
-      - MTX_AUTHINTERNALUSERS_0_PERMISSIONS_0_ACTION=publish
-      - MTX_AUTHINTERNALUSERS_0_PERMISSIONS_1_ACTION=read
-      - MTX_AUTHINTERNALUSERS_0_PERMISSIONS_2_ACTION=playback
-      - MTX_AUTHINTERNALUSERS_0_PERMISSIONS_3_ACTION=api
+      MTX_PATHDEFAULTS_RECORD: ${RECORD_ENABLED}
+      MTX_PATHDEFAULTS_RECORDPATH: ${RECORD_PATH}
+      MTX_PATHDEFAULTS_RECORDFORMAT: ${RECORD_FORMAT}
+      MTX_PATHDEFAULTS_RECORDPARTDURATION: ${RECORD_PART_DURATION}
+      MTX_PATHDEFAULTS_RECORDMAXPARTSIZE: ${RECORD_MAX_PART_SIZE}
+      MTX_PATHDEFAULTS_RECORDSEGMENTDURATION: ${RECORD_SEGMENT_DURATION}
+      MTX_PATHDEFAULTS_RECORDDELETEAFTER: ${RECORD_DELETE_AFTER}
+      MTX_AUTHINTERNALUSERS_0_USER: ${MEDIA_USERNAME}
+      MTX_AUTHINTERNALUSERS_0_PASS: ${MEDIA_PASSWORD}
+      MTX_AUTHINTERNALUSERS_0_PERMISSIONS_0_ACTION: publish
+      MTX_AUTHINTERNALUSERS_0_PERMISSIONS_1_ACTION: read
+      MTX_AUTHINTERNALUSERS_0_PERMISSIONS_2_ACTION: playback
+      MTX_AUTHINTERNALUSERS_0_PERMISSIONS_3_ACTION: api
     volumes:
       - ./mediamtx.yml:/mediamtx.yml
       - /assets/record:${VIDEO_RECORD_PATH}
@@ -35,14 +55,16 @@ services:
         LOG_DIR: ${LOG_DIR}
     container_name: rtsp_hub_dev
     environment:
-      - API_TOKEN=${API_TOKEN}
-      - MEDIA_SERVER_HOST=${MEDIA_SERVER_HOST}
-      - MEDIA_SERVER_PORT=${MEDIA_SERVER_PORT}
-      - MEDIA_USERNAME=${MEDIA_USERNAME}
-      - MEDIA_PASSWORD=${MEDIA_PASSWORD}
-      - VIDEO_RECORD_PATH=${VIDEO_RECORD_PATH}
-      - VIDEO_PROCESSED_PATH=${VIDEO_PROCESSED_PATH}
-      - RECORD_SEGMENT_DURATION=${RECORD_SEGMENT_DURATION}
+      DATABASE_URL: ${DATABASE_URL}_dev
+      API_TOKEN: ${API_TOKEN}
+      MEDIA_SERVER_HOST: ${MEDIA_SERVER_HOST}
+      MEDIA_SERVER_PORT: ${MEDIA_SERVER_PORT}
+      MEDIA_USERNAME: ${MEDIA_USERNAME}
+      MEDIA_PASSWORD: ${MEDIA_PASSWORD}
+      RESTART_BACKOFF_SECONDS: ${RESTART_BACKOFF_SECONDS}
+      VIDEO_RECORD_PATH: ${VIDEO_RECORD_PATH}
+      VIDEO_PROCESSED_PATH: ${VIDEO_PROCESSED_PATH}
+      RECORD_SEGMENT_DURATION: ${RECORD_SEGMENT_DURATION}
     volumes:
       - ./app:/app/app
       - ./assets:/app/assets
@@ -50,9 +72,21 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     depends_on:
-      - media-service
+      media-service:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        alembic -c app/alembic.ini upgrade head &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+    tty: true
     networks:
       - person_detection
+
+volumes:
+  postgres_dev_data:
 
 networks:
   person_detection:
