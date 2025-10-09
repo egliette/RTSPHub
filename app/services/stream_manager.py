@@ -15,7 +15,6 @@ class StreamWorker:
         source_uri: str,
         output_url: str,
         restart_backoff_seconds: int,
-        dao: Optional[StreamDAO] = None,
     ):
         """Initialize a worker responsible for publishing a looped file to an output URL.
 
@@ -24,13 +23,12 @@ class StreamWorker:
             source_uri: Local path to the input media file, or an rtsp:// URL.
             output_url: Target output URL (e.g., rtmp://host/app/stream or rtsp://...).
             restart_backoff_seconds: Backoff delay before restarting after exit/error.
-            dao: Optional DAO for persisting state changes to database.
         """
         self.stream_id = stream_id
         self.source_uri = source_uri
         self.output_url = output_url
         self.restart_backoff_seconds = restart_backoff_seconds
-        self.dao = dao
+        self.dao = StreamDAO()
         self._state_lock = threading.Lock()
         self.stop_event = threading.Event()
         self.ffmpeg_process: Optional[subprocess.Popen] = None
@@ -193,9 +191,7 @@ class StreamWorker:
 
 
 class StreamManager:
-    def __init__(
-        self, restart_backoff_seconds: int = 10, dao: Optional[StreamDAO] = None
-    ) -> None:
+    def __init__(self, restart_backoff_seconds: int = 10) -> None:
         """Manage lifecycle of multiple `StreamWorker` instances.
 
         Args:
@@ -206,9 +202,8 @@ class StreamManager:
         self._lock = threading.Lock()
         self._workers: Dict[str, StreamWorker] = {}
         self._next_id: int = 1
-        self._dao = dao or StreamDAO()
-        if self._dao is not None:
-            self._recover_streams()
+        self._dao = StreamDAO()
+        self._recover_streams()
 
     def _recover_streams(self) -> None:
         """Recover running streams from database after restart."""
@@ -271,7 +266,6 @@ class StreamManager:
                 source_uri,
                 target_url,
                 self.restart_backoff_seconds,
-                self._dao,
             )
             self._workers[assigned_id] = worker
             worker.start()
