@@ -13,6 +13,7 @@ from app.config.settings import settings
 # Import your models and settings
 from app.database.connection import Base
 from app.models.stream import Stream
+from app.models.video_process import VideoProcessTask
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
