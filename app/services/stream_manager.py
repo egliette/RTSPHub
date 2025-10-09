@@ -194,7 +194,7 @@ class StreamWorker:
 
 class StreamManager:
     def __init__(
-        self, restart_backoff_seconds: int = 10, dao: StreamDAO | None = None
+        self, restart_backoff_seconds: int = 10, dao: Optional[StreamDAO] = None
     ) -> None:
         """Manage lifecycle of multiple `StreamWorker` instances.
 
@@ -206,7 +206,7 @@ class StreamManager:
         self._lock = threading.Lock()
         self._workers: Dict[str, StreamWorker] = {}
         self._next_id: int = 1
-        self._dao = dao
+        self._dao = dao or StreamDAO()
         if self._dao is not None:
             self._recover_streams()
 
@@ -329,3 +329,10 @@ class StreamManager:
             if not worker:
                 raise KeyError("stream not found")
             return worker.get_state()
+
+
+from app.config.settings import settings
+
+stream_manager = StreamManager(
+    restart_backoff_seconds=settings.RESTART_BACKOFF_SECONDS,
+)
