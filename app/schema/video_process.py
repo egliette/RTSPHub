@@ -41,7 +41,9 @@ class VideoProcessResponse(BaseModel):
         default=None, description="Target output URI (local path or presigned URL)"
     )
     created_at: datetime = Field(description="Task creation timestamp")
-    updated_at: datetime = Field(description="Last status update timestamp")
+    updated_at: Optional[datetime] = Field(
+        default=None, description="Last status update timestamp"
+    )
 
 
 class VideoProcessStatus(BaseModel):
@@ -56,4 +58,6 @@ class VideoProcessStatus(BaseModel):
         default=None, description="Target output URI (local path or presigned URL)"
     )
     created_at: datetime = Field(description="Task creation timestamp")
-    updated_at: datetime = Field(description="Last status update timestamp")
+    updated_at: Optional[datetime] = Field(
+        default=None, description="Last status update timestamp"
+    )

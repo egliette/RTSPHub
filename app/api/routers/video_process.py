@@ -30,7 +30,7 @@ async def create_video_task(request: VideoProcessRequest):
             message="Task created successfully",
             result_video_uri=task.result_video_path,
             created_at=task.created_at,
-            updated_at=task.updated_at,
+            updated_at=task.updated_at or task.created_at,
         )
 
     except ValueError as e:
@@ -53,7 +53,7 @@ async def list_video_tasks():
                 message=task.message,
                 result_video_uri=task.result_video_path,
                 created_at=task.created_at,
-                updated_at=task.updated_at,
+                updated_at=task.updated_at or task.created_at,
             )
             for task in tasks
         ]
@@ -72,7 +72,7 @@ async def get_video_task_status(task_id: str):
             message=task.message,
             result_video_uri=task.result_video_path,
             created_at=task.created_at,
-            updated_at=task.updated_at,
+            updated_at=task.updated_at or task.created_at,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

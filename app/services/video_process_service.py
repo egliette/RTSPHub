@@ -1,9 +1,10 @@
 import os
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 from uuid import uuid4
 
-from app.models.video_process import VideoProcessTask
+from app.crud.video_process import VideoProcessDAO
+from app.models.video_process import TaskStatus, VideoProcessTask
 from app.services.video_process_queue import VideoProcessQueueManager
 
 
@@ -14,21 +15,21 @@ class VideoProcessService:
         self,
         video_record_path: str,
         video_processed_path: str,
-        queue_manager: Optional[VideoProcessQueueManager] = None,
     ):
         """Initialize the video process service.
 
         Args:
             video_record_path: Path to the directory containing recorded videos
             video_processed_path: Path to the directory where processed videos will be stored
-            queue_manager: Optional queue manager instance. If not provided, a new one will be created
         """
         self.video_record_path = video_record_path
         self.video_processed_path = video_processed_path
-        self.queue_manager = queue_manager or VideoProcessQueueManager(
+        self.queue_manager = VideoProcessQueueManager(
             video_record_path=self.video_record_path,
             video_processed_path=self.video_processed_path,
         )
+        self.dao = VideoProcessDAO()
+        self._clear_all_tasks_on_startup()
 
     def validate_request(
         self, source_rtsp_path: str, start_time: str, end_time: str
@@ -89,16 +90,18 @@ class VideoProcessService:
     def create_task(
         self, source_rtsp_path: str, start_time: str, end_time: str
     ) -> VideoProcessTask:
-        """Create and queue a video task."""
+        """Create and queue a video task and persist it."""
+        task_id = uuid4()
         task = VideoProcessTask(
-            source_rtsp_path=source_rtsp_path, start_time=start_time, end_time=end_time
+            source_rtsp_path=source_rtsp_path,
+            start_time=start_time,
+            end_time=end_time,
+            status=TaskStatus.pending,
+            result_video_path=os.path.join(
+                self.video_processed_path, source_rtsp_path, f"{task_id}.mp4"
+            ),
         )
-        # Ensure an ID exists even without a DB insert
-        if not getattr(task, "id", None):
-            setattr(task, "id", uuid4())
-        task.result_video_path = os.path.join(
-            self.video_processed_path, source_rtsp_path, f"{task.id}.mp4"
-        )
+        task = self.dao.add(task)
         self.queue_manager.add_task(task)
 
         return task
@@ -112,7 +115,7 @@ class VideoProcessService:
         except ValueError:
             raise ValueError("Invalid task ID format")
 
-        task = self.queue_manager.get_task_status(uuid_task_id)
+        task = self.dao.get(uuid_task_id)
         if task is None:
             raise ValueError("Task not found")
 
@@ -120,7 +123,16 @@ class VideoProcessService:
 
     def list_all_tasks(self) -> List[VideoProcessTask]:
         """List all video tasks."""
-        return self.queue_manager.list_all_tasks()
+        db_tasks = self.dao.list_all()
+        return db_tasks
+
+    def _clear_all_tasks_on_startup(self) -> None:
+        """Clear all tasks from database on service startup."""
+        try:
+            deleted_count = self.dao.clear_all_tasks()
+            print(f"Cleared {deleted_count} existing tasks from database on startup")
+        except Exception as e:
+            print(f"Failed to clear tasks on startup: {e}")
 
 
 from app.config.settings import settings

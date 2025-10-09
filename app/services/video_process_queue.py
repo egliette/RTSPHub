@@ -4,10 +4,11 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Callable, Dict, List, Optional
 from uuid import UUID
 
+from app.crud.video_process import VideoProcessDAO
 from app.models.video_process import TaskStatus, VideoProcessTask
 from app.utils.media import get_video_duration
 
@@ -19,12 +20,6 @@ class VideoSegment:
     start: datetime
     end: datetime
     duration: float
-
-
-@dataclass
-class CompletedTask:
-    task: VideoProcessTask
-    completed_at: datetime
 
 
 class VideoProcessWorker:
@@ -50,6 +45,7 @@ class VideoProcessWorker:
         self.video_record_path = video_record_path
         self.video_processed_path = video_processed_path
         self.cleanup_task = cleanup_task or (lambda: None)
+        self.dao = VideoProcessDAO()
         self.stop_event = threading.Event()
         self.worker_thread = threading.Thread(
             target=self._process_task, name=f"VideoProcessWorker-{task.id}", daemon=True
@@ -69,29 +65,44 @@ class VideoProcessWorker:
             self.worker_thread.join(timeout=10)
 
     def _process_task(self) -> None:
+        """Process a video task by:
+
+        - Finding relevant videos in time range
+        - Trimming video segments
+        - Concatenating into final video
+        - Updating task status
+        """
         try:
             start_dt = datetime.strptime(self.task.start_time, "%Y-%m-%d %H:%M:%S")
             end_dt = datetime.strptime(self.task.end_time, "%Y-%m-%d %H:%M:%S")
+
             video_folder = os.path.join(
                 self.video_record_path, self.task.source_rtsp_path
             )
+
             self.task.status = TaskStatus.processing
-            self.task.updated_at = datetime.now(timezone.utc)
+            self.dao.update_status(self.task_id, TaskStatus.processing)
+
+            # Find videos that overlap with the requested time range
             relevant_videos = self._find_relevant_videos(video_folder, start_dt, end_dt)
             if not relevant_videos:
                 self.task.status = TaskStatus.error
                 self.task.message = "No videos found in the specified time range"
-                self.task.updated_at = datetime.now(timezone.utc)
+                self.dao.update_status(
+                    self.task_id, TaskStatus.error, message=self.task.message
+                )
                 return
+
+            # Create trimmed segments for each relevant video
             temp_segments = []
             for i, video in enumerate(relevant_videos):
                 if self.stop_event.is_set():
                     return
                 temp_output = f"/tmp/segment_{self.task.id}_{i}.mp4"
-                self.task.updated_at = datetime.now(timezone.utc)
                 self._create_trimmed_segment(video, start_dt, end_dt, temp_output)
                 temp_segments.append(temp_output)
-            self.task.updated_at = datetime.now(timezone.utc)
+
+            # Concatenate all trimmed segments into final video
             output_path = self.task.result_video_path or os.path.join(
                 self.video_processed_path,
                 self.task.source_rtsp_path,
@@ -99,19 +110,30 @@ class VideoProcessWorker:
             )
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             self._concatenate_videos(temp_segments, output_path)
+
+            # Clean up temporary segment files
             for segment in temp_segments:
                 if os.path.exists(segment):
                     os.remove(segment)
+
+            # Update task status to completed with results
             self.task.status = TaskStatus.completed
             self.task.result_video_path = output_path
             self.task.message = (
                 f"Successfully processed {len(relevant_videos)} video segments"
             )
-            self.task.updated_at = datetime.now(timezone.utc)
+            self.dao.update_status(
+                self.task_id,
+                TaskStatus.completed,
+                message=self.task.message,
+                result_video_path=output_path,
+            )
         except Exception as e:
             self.task.status = TaskStatus.error
             self.task.message = f"Error processing task: {str(e)}"
-            self.task.updated_at = datetime.now(timezone.utc)
+            self.dao.update_status(
+                self.task_id, TaskStatus.error, message=self.task.message
+            )
         finally:
             try:
                 self.cleanup_task()
@@ -276,9 +298,9 @@ class VideoProcessQueueManager:
         self._lock = threading.Lock()
         self._workers: Dict[UUID, VideoProcessWorker] = {}
         self._pending_tasks: list[VideoProcessTask] = []
-        self._completed_tasks: Dict[UUID, CompletedTask] = {}
+        self._dao = VideoProcessDAO()
         self._cleanup_thread = threading.Thread(
-            target=self._cleanup_completed_tasks, daemon=True
+            target=self._cleanup_old_tasks, daemon=True
         )
         self._cleanup_thread.start()
 
@@ -286,8 +308,6 @@ class VideoProcessQueueManager:
         """Add a task to the queue."""
         with self._lock:
             task.status = TaskStatus.pending
-            task.created_at = datetime.now(timezone.utc)
-            task.updated_at = datetime.now(timezone.utc)
             self._pending_tasks.append(task)
             self._start_next_task()
 
@@ -301,24 +321,11 @@ class VideoProcessQueueManager:
                 if task.id == task_id:
                     return task
 
-            if task_id in self._completed_tasks:
-                return self._completed_tasks[task_id].task
-
-            return None
+            return self._dao.get(task_id)
 
     def list_all_tasks(self) -> list[VideoProcessTask]:
-        """List all tasks (pending, active, and recently completed)."""
-        with self._lock:
-            result = []
-            result.extend(self._pending_tasks)
-            result.extend([worker.task for worker in self._workers.values()])
-            result.extend(
-                [
-                    completed_task.task
-                    for completed_task in self._completed_tasks.values()
-                ]
-            )
-            return sorted(result, reverse=True, key=lambda t: t.created_at)
+        """List all tasks from database (pending, active, completed, and error)."""
+        return self._dao.list_all()
 
     def _start_next_task(self) -> None:
         """Start the next pending task if we have available workers."""
@@ -339,37 +346,21 @@ class VideoProcessQueueManager:
         worker.start()
 
     def _remove_task(self, task_id: UUID) -> None:
-        """Move a completed task to the completed tasks storage."""
+        """Remove a completed task from active workers."""
         with self._lock:
             worker = self._workers.pop(task_id, None)
             if worker:
                 worker.stop()
-                completed_task = CompletedTask(
-                    task=worker.task, completed_at=datetime.now(timezone.utc)
-                )
-                self._completed_tasks[task_id] = completed_task
             self._start_next_task()
 
-    def _cleanup_completed_tasks(self) -> None:
-        """Background thread to clean up old completed tasks (5 minute retention)."""
+    def _cleanup_old_tasks(self) -> None:
+        """Background thread to clean up old completed/error tasks (1 day retention)."""
         while True:
             try:
-                time.sleep(60)
-                current_time = datetime.now(timezone.utc)
-                retention_threshold = timedelta(minutes=5)  # Hardcoded 5 minutes
-
-                with self._lock:
-                    expired_tasks = []
-                    for task_id, completed_task in self._completed_tasks.items():
-                        if (
-                            current_time - completed_task.completed_at
-                            > retention_threshold
-                        ):
-                            expired_tasks.append(task_id)
-
-                    for task_id in expired_tasks:
-                        del self._completed_tasks[task_id]
-
+                time.sleep(3600)
+                deleted_count = self._dao.cleanup_old_tasks(days_old=1)
+                if deleted_count > 0:
+                    print(f"Cleaned up {deleted_count} old tasks from database")
             except Exception as e:
                 print(f"[ERROR] Error in cleanup thread: {e}")
 

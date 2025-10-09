@@ -4,9 +4,8 @@ from uuid import uuid4
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import String, Uuid, func
-from sqlalchemy.orm import declarative_base
 
-Base = declarative_base()
+from app.database.connection import Base
 
 
 class TaskStatus(str, Enum):
@@ -30,10 +29,8 @@ class VideoProcessTask(Base):
     status = Column(SQLEnum(TaskStatus), nullable=False, default=TaskStatus.pending)
     message = Column(String, nullable=True)
     result_video_path = Column(String, nullable=True)
-    created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     def __repr__(self):
         return f"<VideoMergeTask(id={self.id}, status={self.status}, source_path={self.source_rtsp_path})>"
