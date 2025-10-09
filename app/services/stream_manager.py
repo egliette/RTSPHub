@@ -15,7 +15,7 @@ class StreamWorker:
         source_uri: str,
         output_url: str,
         restart_backoff_seconds: int,
-        repo: Optional[StreamDAO] = None,
+        dao: Optional[StreamDAO] = None,
     ):
         """Initialize a worker responsible for publishing a looped file to an output URL.
 
@@ -24,13 +24,13 @@ class StreamWorker:
             source_uri: Local path to the input media file, or an rtsp:// URL.
             output_url: Target output URL (e.g., rtmp://host/app/stream or rtsp://...).
             restart_backoff_seconds: Backoff delay before restarting after exit/error.
-            repo: Optional DAO for persisting state changes to database.
+            dao: Optional DAO for persisting state changes to database.
         """
         self.stream_id = stream_id
         self.source_uri = source_uri
         self.output_url = output_url
         self.restart_backoff_seconds = restart_backoff_seconds
-        self.repo = repo
+        self.dao = dao
         self._state_lock = threading.Lock()
         self.stop_event = threading.Event()
         self.ffmpeg_process: Optional[subprocess.Popen] = None
@@ -69,9 +69,9 @@ class StreamWorker:
         """
         with self._state_lock:
             self.state = new_state
-        if self.repo is not None:
+        if self.dao is not None:
             try:
-                self.repo.update_state(self.stream_id, new_state)
+                self.dao.update_state(self.stream_id, new_state)
             except Exception:
                 # Best-effort persistence; continue operation even if DB fails
                 pass
@@ -194,7 +194,7 @@ class StreamWorker:
 
 class StreamManager:
     def __init__(
-        self, restart_backoff_seconds: int = 10, repo: StreamDAO | None = None
+        self, restart_backoff_seconds: int = 10, dao: StreamDAO | None = None
     ) -> None:
         """Manage lifecycle of multiple `StreamWorker` instances.
 
@@ -206,14 +206,14 @@ class StreamManager:
         self._lock = threading.Lock()
         self._workers: Dict[str, StreamWorker] = {}
         self._next_id: int = 1
-        self._repo = repo
-        if self._repo is not None:
+        self._dao = dao
+        if self._dao is not None:
             self._recover_streams()
 
     def _recover_streams(self) -> None:
         """Recover running streams from database after restart."""
         try:
-            for stream_data in self._repo.list():
+            for stream_data in self._dao.list():
                 if stream_data.state != StreamState.stopped:
                     try:
                         self.add_stream(
@@ -232,7 +232,7 @@ class StreamManager:
             candidate = f"stream-{self._next_id}"
             self._next_id += 1
             if candidate not in self._workers and (
-                self._repo is None or not self._repo.exists(candidate)
+                self._dao is None or not self._dao.exists(candidate)
             ):
                 return candidate
 
@@ -260,7 +260,7 @@ class StreamManager:
         with self._lock:
             assigned_id = stream_id or self._generate_stream_id()
             if assigned_id in self._workers or (
-                self._repo is not None and self._repo.exists(assigned_id)
+                self._dao is not None and self._dao.exists(assigned_id)
             ):
                 raise ValueError("stream_id already exists")
             if not output_url:
@@ -271,14 +271,14 @@ class StreamManager:
                 source_uri,
                 target_url,
                 self.restart_backoff_seconds,
-                self._repo,
+                self._dao,
             )
             self._workers[assigned_id] = worker
             worker.start()
 
-            if self._repo is not None:
+            if self._dao is not None:
                 try:
-                    self._repo.add(
+                    self._dao.add(
                         stream_id=assigned_id,
                         source_uri=source_uri,
                         output_url=target_url,
@@ -295,9 +295,9 @@ class StreamManager:
         if worker:
             worker.stop()
 
-        if self._repo is not None:
+        if self._dao is not None:
             try:
-                self._repo.remove(stream_id)
+                self._dao.remove(stream_id)
             except Exception:
                 pass
 

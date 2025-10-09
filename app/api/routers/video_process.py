@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 
 from app.schema.video_process import (
     TaskStatus,

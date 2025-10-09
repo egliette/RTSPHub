@@ -12,13 +12,13 @@ router = APIRouter()
 _manager: StreamManager | None = None
 
 
-def get_stream_manager(repo: StreamDAO = Depends(StreamDAO)) -> StreamManager:
+def get_stream_manager(dao: StreamDAO = Depends(StreamDAO)) -> StreamManager:
     """Get or create StreamManager instance with DAO dependency."""
     global _manager
     if _manager is None:
         _manager = StreamManager(
             restart_backoff_seconds=settings.RESTART_BACKOFF_SECONDS,
-            repo=repo,
+            dao=dao,
         )
     return _manager
 
