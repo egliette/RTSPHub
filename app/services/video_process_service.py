@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from typing import List
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from app.crud.video_process import VideoProcessDAO
 from app.models.video_process import TaskStatus, VideoProcessTask
@@ -92,15 +92,12 @@ class VideoProcessService:
         self, source_rtsp_path: str, start_time: str, end_time: str
     ) -> VideoProcessTask:
         """Create and queue a video task and persist it."""
-        task_id = uuid4()
         task = VideoProcessTask(
             source_rtsp_path=source_rtsp_path,
             start_time=start_time,
             end_time=end_time,
             status=TaskStatus.pending,
-            result_video_path=os.path.join(
-                self.video_processed_path, source_rtsp_path, f"{task_id}.mp4"
-            ),
+            result_video_path=None,
         )
         task = self.dao.add(task)
         self.queue_manager.add_task(task)
