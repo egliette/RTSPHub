@@ -85,3 +85,16 @@ class VideoProcessDAO:
             return count
         finally:
             db.close()
+
+    def delete(self, task_id) -> bool:
+        """Delete a task by id. Returns True if deleted, False if not found."""
+        db = SessionLocal()
+        try:
+            task = db.get(VideoProcessTask, task_id)
+            if not task:
+                return False
+            db.delete(task)
+            db.commit()
+            return True
+        finally:
+            db.close()

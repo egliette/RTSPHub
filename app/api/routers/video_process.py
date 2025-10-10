@@ -78,3 +78,21 @@ async def get_video_task_status(task_id: str):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/tasks/{task_id}")
+async def delete_video_task(task_id: str):
+    """Delete a specific video processing task by id.
+
+    Stops active processing if running, removes pending tasks, and deletes the record.
+    Returns 200 on success, 404 if not found/invalid.
+    """
+    try:
+        removed = video_service.remove_task(task_id)
+        if not removed:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return {"status": "ok"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

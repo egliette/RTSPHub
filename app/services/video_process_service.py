@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from typing import List
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.crud.video_process import VideoProcessDAO
 from app.models.video_process import TaskStatus, VideoProcessTask
@@ -109,8 +109,6 @@ class VideoProcessService:
 
     def get_task_status(self, task_id: str) -> VideoProcessTask:
         """Get the status of a task by ID."""
-        from uuid import UUID
-
         try:
             uuid_task_id = UUID(task_id)
         except ValueError:
@@ -126,6 +124,23 @@ class VideoProcessService:
         """List all video tasks."""
         db_tasks = self.dao.list_all()
         return db_tasks
+
+    def remove_task(self, task_id: str) -> bool:
+        """Remove a task by id. Stops active worker or removes pending, then deletes DB record."""
+        try:
+            uuid_task_id = UUID(task_id)
+        except ValueError:
+            raise ValueError("Invalid task ID format")
+
+        removed = self.queue_manager.remove_task(uuid_task_id)
+        if not removed:
+            # If not in memory queues/workers, attempt to delete from DB directly
+            try:
+                return self.dao.delete(uuid_task_id)
+            except Exception as e:
+                log.err(f"Failed to delete task {uuid_task_id} from database: {e}")
+                return False
+        return True
 
     def _clear_all_tasks_on_startup(self) -> None:
         """Clear all tasks from database on service startup."""

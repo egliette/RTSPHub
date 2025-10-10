@@ -2,7 +2,6 @@ import os
 import shutil
 import subprocess
 import threading
-import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Callable, Dict, List, Optional
@@ -313,10 +312,6 @@ class VideoProcessQueueManager:
         self._workers: Dict[UUID, VideoProcessWorker] = {}
         self._pending_tasks: list[VideoProcessTask] = []
         self._dao = VideoProcessDAO()
-        self._cleanup_thread = threading.Thread(
-            target=self._cleanup_old_tasks, daemon=True
-        )
-        self._cleanup_thread.start()
 
     def add_task(self, task: VideoProcessTask) -> None:
         """Add a task to the queue."""
@@ -370,16 +365,36 @@ class VideoProcessQueueManager:
                 log.info(f"Removed completed video processing task {task_id}")
             self._start_next_task()
 
-    def _cleanup_old_tasks(self) -> None:
-        """Background thread to clean up old completed/error tasks (1 day retention)."""
-        while True:
-            try:
-                time.sleep(3600)
-                deleted_count = self._dao.cleanup_old_tasks(days_old=1)
-                if deleted_count > 0:
-                    log.info(f"Cleaned up {deleted_count} old tasks from database")
-            except Exception as e:
-                log.err(f"Error in cleanup thread: {e}")
+    def remove_task(self, task_id: UUID) -> bool:
+        """Cancel and remove a task.
+
+        If the task is active, stop its worker. If pending, drop from queue.
+        Also remove the task record from the database.
+
+        Returns True if something was removed, False if not found.
+        """
+        removed = False
+        with self._lock:
+            # If active, stop and remove worker
+            worker = self._workers.pop(task_id, None)
+            if worker:
+                worker.stop()
+                removed = True
+
+            # If pending, remove from pending list
+            for i, t in enumerate(list(self._pending_tasks)):
+                if t.id == task_id:
+                    self._pending_tasks.pop(i)
+                    removed = True
+                    break
+
+        try:
+            self._dao.delete(task_id)
+        except Exception as e:
+            log.warn(f"Failed to delete task {task_id} from database: {e}")
+
+        self._start_next_task()
+        return removed
 
 
 from app.config.settings import settings
