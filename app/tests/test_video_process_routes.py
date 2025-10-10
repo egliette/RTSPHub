@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.schema.video_process import TaskStatus
+from app.utils.logger import log
 from app.utils.media import get_video_duration
 
 
@@ -179,8 +180,8 @@ class TestVideoProcessRoutes:
         try:
             if output_path and os.path.exists(output_path):
                 os.remove(output_path)
-        except Exception:
-            pass  # Ignore cleanup errors
+        except Exception as e:
+            log.warn(f"Failed to cleanup test result video {output_path}: {e}")
 
     @pytest.mark.slow
     def test_video_task_exactly_two_videos(
@@ -230,8 +231,8 @@ class TestVideoProcessRoutes:
         try:
             if output_path and os.path.exists(output_path):
                 os.remove(output_path)
-        except Exception:
-            pass  # Ignore cleanup errors
+        except Exception as e:
+            log.warn(f"Failed to cleanup test result video {output_path}: {e}")
 
     @pytest.mark.slow
     def test_video_task_exactly_one_video(
@@ -277,5 +278,5 @@ class TestVideoProcessRoutes:
         try:
             if output_path and os.path.exists(output_path):
                 os.remove(output_path)
-        except Exception:
-            pass  # Ignore cleanup errors
+        except Exception as e:
+            log.warn(f"Failed to cleanup test result video {output_path}: {e}")

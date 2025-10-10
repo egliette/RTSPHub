@@ -6,6 +6,7 @@ from uuid import uuid4
 from app.crud.video_process import VideoProcessDAO
 from app.models.video_process import TaskStatus, VideoProcessTask
 from app.services.video_process_queue import VideoProcessQueueManager
+from app.utils.logger import log
 
 
 class VideoProcessService:
@@ -130,9 +131,9 @@ class VideoProcessService:
         """Clear all tasks from database on service startup."""
         try:
             deleted_count = self.dao.clear_all_tasks()
-            print(f"Cleared {deleted_count} existing tasks from database on startup")
+            log.info(f"Cleared {deleted_count} existing tasks from database on startup")
         except Exception as e:
-            print(f"Failed to clear tasks on startup: {e}")
+            log.err(f"Failed to clear tasks on startup: {e}")
 
 
 from app.config.settings import settings

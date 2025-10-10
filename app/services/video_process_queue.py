@@ -10,6 +10,7 @@ from uuid import UUID
 
 from app.crud.video_process import VideoProcessDAO
 from app.models.video_process import TaskStatus, VideoProcessTask
+from app.utils.logger import log
 from app.utils.media import get_video_duration
 
 
@@ -80,12 +81,16 @@ class VideoProcessWorker:
                 self.video_record_path, self.task.source_rtsp_path
             )
 
+            log.info(
+                f"Starting video processing task {self.task_id} for {self.task.source_rtsp_path} from {self.task.start_time} to {self.task.end_time}"
+            )
             self.task.status = TaskStatus.processing
             self.dao.update_status(self.task_id, TaskStatus.processing)
 
             # Find videos that overlap with the requested time range
             relevant_videos = self._find_relevant_videos(video_folder, start_dt, end_dt)
             if not relevant_videos:
+                log.warn(f"No videos found in time range for task {self.task_id}")
                 self.task.status = TaskStatus.error
                 self.task.message = "No videos found in the specified time range"
                 self.dao.update_status(
@@ -94,9 +99,13 @@ class VideoProcessWorker:
                 return
 
             # Create trimmed segments for each relevant video
+            log.info(
+                f"Found {len(relevant_videos)} relevant videos for task {self.task_id}"
+            )
             temp_segments = []
             for i, video in enumerate(relevant_videos):
                 if self.stop_event.is_set():
+                    log.info(f"Task {self.task_id} stopped by user")
                     return
                 temp_output = f"/tmp/segment_{self.task.id}_{i}.mp4"
                 self._create_trimmed_segment(video, start_dt, end_dt, temp_output)
@@ -109,6 +118,9 @@ class VideoProcessWorker:
                 f"{self.task.id}.mp4",
             )
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            log.info(
+                f"Concatenating {len(temp_segments)} segments for task {self.task_id}"
+            )
             self._concatenate_videos(temp_segments, output_path)
 
             # Clean up temporary segment files
@@ -122,6 +134,7 @@ class VideoProcessWorker:
             self.task.message = (
                 f"Successfully processed {len(relevant_videos)} video segments"
             )
+            log.info(f"Task {self.task_id} completed successfully: {self.task.message}")
             self.dao.update_status(
                 self.task_id,
                 TaskStatus.completed,
@@ -129,6 +142,7 @@ class VideoProcessWorker:
                 result_video_path=output_path,
             )
         except Exception as e:
+            log.err(f"Task {self.task_id} failed: {str(e)}")
             self.task.status = TaskStatus.error
             self.task.message = f"Error processing task: {str(e)}"
             self.dao.update_status(
@@ -137,8 +151,8 @@ class VideoProcessWorker:
         finally:
             try:
                 self.cleanup_task()
-            except Exception:
-                pass
+            except Exception as e:
+                log.warn(f"Error in cleanup task for video process {self.task_id}: {e}")
 
     def _find_relevant_videos(
         self, folder: str, start_dt: datetime, end_dt: datetime
@@ -172,7 +186,7 @@ class VideoProcessWorker:
                         )
                     )
             except Exception as e:
-                print(f"Error processing video {video_file}: {e}")
+                log.err(f"Error processing video {video_file}: {e}")
                 continue
 
         # Sort by start time
@@ -309,6 +323,7 @@ class VideoProcessQueueManager:
         with self._lock:
             task.status = TaskStatus.pending
             self._pending_tasks.append(task)
+            log.info(f"Added video processing task {task.id} to queue")
             self._start_next_task()
 
     def get_task_status(self, task_id: UUID) -> Optional[VideoProcessTask]:
@@ -344,6 +359,7 @@ class VideoProcessQueueManager:
         )
         self._workers[task.id] = worker
         worker.start()
+        log.info(f"Started worker for video processing task {task.id}")
 
     def _remove_task(self, task_id: UUID) -> None:
         """Remove a completed task from active workers."""
@@ -351,6 +367,7 @@ class VideoProcessQueueManager:
             worker = self._workers.pop(task_id, None)
             if worker:
                 worker.stop()
+                log.info(f"Removed completed video processing task {task_id}")
             self._start_next_task()
 
     def _cleanup_old_tasks(self) -> None:
@@ -360,9 +377,9 @@ class VideoProcessQueueManager:
                 time.sleep(3600)
                 deleted_count = self._dao.cleanup_old_tasks(days_old=1)
                 if deleted_count > 0:
-                    print(f"Cleaned up {deleted_count} old tasks from database")
+                    log.info(f"Cleaned up {deleted_count} old tasks from database")
             except Exception as e:
-                print(f"[ERROR] Error in cleanup thread: {e}")
+                log.err(f"Error in cleanup thread: {e}")
 
 
 from app.config.settings import settings

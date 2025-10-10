@@ -10,6 +10,7 @@ from app.config.settings import settings
 from app.main import app
 from app.schema.streaming import AddStreamRequest
 from app.schema.video_process import VideoProcessRequest
+from app.utils.logger import log
 
 
 @pytest.fixture(scope="session")
@@ -100,8 +101,8 @@ def setup_test_videos(source_uri: str, test_record_path: str) -> Iterator[dict]:
     # Cleanup: Remove test videos
     try:
         shutil.rmtree(test_cam_path)
-    except Exception:
-        pass
+    except Exception as e:
+        log.warn(f"Failed to cleanup test videos directory {test_cam_path}: {e}")
 
 
 @pytest.fixture()

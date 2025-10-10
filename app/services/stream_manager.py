@@ -6,6 +6,7 @@ from typing import Dict, Optional
 
 from app.crud.stream import StreamDAO
 from app.models.stream import StreamState
+from app.utils.logger import log
 
 
 class StreamWorker:
@@ -48,7 +49,7 @@ class StreamWorker:
         if self.worker_thread.is_alive():
             self.worker_thread.join(timeout=5)
             if self.worker_thread.is_alive():
-                print(f"Warning: Worker thread {self.stream_id} did not exit cleanly")
+                log.warn(f"Worker thread {self.stream_id} did not exit cleanly")
 
     def get_state(self) -> StreamState:
         """Return the current state of the worker.
@@ -70,9 +71,11 @@ class StreamWorker:
         if self.dao is not None:
             try:
                 self.dao.update_state(self.stream_id, new_state)
-            except Exception:
+            except Exception as e:
                 # Best-effort persistence; continue operation even if DB fails
-                pass
+                log.warn(
+                    f"Failed to update stream state in database for {self.stream_id}: {e}"
+                )
 
     def _spawn_ffmpeg_process(self) -> subprocess.Popen:
         """Spawn the ffmpeg process to publish the input file in a loop.
@@ -127,9 +130,9 @@ class StreamWorker:
                     break
                 line_str = line.decode(errors="ignore").strip()
                 if line_str:
-                    print(f"FFmpeg [{self.stream_id}] error: {line_str}")
-        except (ValueError, OSError):
-            pass
+                    log.err(f"FFmpeg [{self.stream_id}] error: {line_str}")
+        except (ValueError, OSError) as e:
+            log.bug(f"Error reading FFmpeg stderr for {self.stream_id}: {e}")
 
     def _run_once(self) -> None:
         """Run one ffmpeg session until it exits or a stop is requested."""
@@ -137,7 +140,7 @@ class StreamWorker:
         try:
             self.ffmpeg_process = self._spawn_ffmpeg_process()
         except Exception as e:
-            print(f"Failed to spawn ffmpeg for {self.stream_id}: {e}")
+            log.err(f"Failed to spawn ffmpeg for {self.stream_id}: {e}")
             self._update_state(StreamState.error)
             return
 
@@ -148,6 +151,7 @@ class StreamWorker:
                 target=self._log_stderr, name=f"stderr-{self.stream_id}", daemon=True
             )
             stderr_thread.start()
+            log.info(f"Started FFmpeg process for stream {self.stream_id}")
 
             while self.ffmpeg_process.poll() is None and not self.stop_event.is_set():
                 time.sleep(0.5)
@@ -155,7 +159,7 @@ class StreamWorker:
             if not self.stop_event.is_set():
                 exit_code = self.ffmpeg_process.poll()
                 if exit_code is not None and exit_code != 0:
-                    print(f"Stream {self.stream_id} exited with code {exit_code}")
+                    log.warn(f"Stream {self.stream_id} exited with code {exit_code}")
 
         finally:
             if self.ffmpeg_process and self.ffmpeg_process.poll() is None:
@@ -168,6 +172,7 @@ class StreamWorker:
 
             if stderr_thread and stderr_thread.is_alive():
                 stderr_thread.join(timeout=1)
+                log.info(f"Stopped FFmpeg process for stream {self.stream_id}")
 
     def _run_loop(self) -> None:
         """Main loop that restarts ffmpeg with backoff until stopped."""
@@ -180,13 +185,18 @@ class StreamWorker:
             self._update_state(StreamState.error)
 
             if self.restart_backoff_seconds < 0:
+                log.info(f"Auto-restart disabled for stream {self.stream_id}, stopping")
                 break
 
+            log.info(
+                f"Waiting {self.restart_backoff_seconds}s before restarting stream {self.stream_id}"
+            )
             for _ in range(self.restart_backoff_seconds):
                 if self.stop_event.is_set():
                     break
                 time.sleep(1)
 
+        log.info(f"Stream worker {self.stream_id} stopped")
         self._update_state(StreamState.stopped)
 
 
@@ -217,9 +227,11 @@ class StreamManager:
                             stream_data.stream_id,
                         )
                     except Exception as e:
-                        print(f"Failed to recover stream {stream_data.stream_id}: {e}")
+                        log.err(
+                            f"Failed to recover stream {stream_data.stream_id}: {e}"
+                        )
         except Exception as e:
-            print(f"Failed to recover streams from database: {e}")
+            log.err(f"Failed to recover streams from database: {e}")
 
     def _generate_stream_id(self) -> str:
         """Generate a unique, auto-incrementing stream identifier."""
@@ -278,8 +290,10 @@ class StreamManager:
                         output_url=target_url,
                         state=StreamState.running,
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.warn(f"Failed to persist stream {assigned_id} to database: {e}")
+
+            log.info(f"Added stream {assigned_id} from {source_uri} to {target_url}")
             return assigned_id
 
     def remove_stream(self, stream_id: str) -> None:
@@ -288,12 +302,13 @@ class StreamManager:
             worker = self._workers.pop(stream_id, None)
         if worker:
             worker.stop()
+            log.info(f"Removed stream {stream_id}")
 
         if self._dao is not None:
             try:
                 self._dao.remove(stream_id)
-            except Exception:
-                pass
+            except Exception as e:
+                log.warn(f"Failed to remove stream {stream_id} from database: {e}")
 
     def list_streams(self) -> Dict[str, Dict[str, str]]:
         """List current workers with their video path and state."""
