@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/"
+    DATABASE_URL: str = "sqlite:///./rtsp_hub.db"
 
     # API / App metadata
     API_PREFIX: str = "/api"

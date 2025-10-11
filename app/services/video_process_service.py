@@ -106,12 +106,13 @@ class VideoProcessService:
 
     def get_task_status(self, task_id: str) -> VideoProcessTask:
         """Get the status of a task by ID."""
+        # Validate UUID format but pass as string to DAO
         try:
-            uuid_task_id = UUID(task_id)
+            UUID(task_id)  # Validate format
         except ValueError:
             raise ValueError("Invalid task ID format")
 
-        task = self.dao.get(uuid_task_id)
+        task = self.dao.get(task_id)
         if task is None:
             raise ValueError("Task not found")
 
@@ -125,7 +126,7 @@ class VideoProcessService:
     def remove_task(self, task_id: str) -> bool:
         """Remove a task by id. Stops active worker or removes pending, then deletes DB record."""
         try:
-            uuid_task_id = UUID(task_id)
+            uuid_task_id = UUID(task_id)  # Validate format
         except ValueError:
             raise ValueError("Invalid task ID format")
 
@@ -133,9 +134,9 @@ class VideoProcessService:
         if not removed:
             # If not in memory queues/workers, attempt to delete from DB directly
             try:
-                return self.dao.delete(uuid_task_id)
+                return self.dao.delete(task_id)
             except Exception as e:
-                log.err(f"Failed to delete task {uuid_task_id} from database: {e}")
+                log.err(f"Failed to delete task {task_id} from database: {e}")
                 return False
         return True
 

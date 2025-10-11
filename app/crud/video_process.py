@@ -74,7 +74,7 @@ class VideoProcessDAO:
         """Clean up completed or error tasks older than specified days. Returns number of deleted tasks."""
         db = SessionLocal()
         try:
-            cutoff_date = datetime.utcnow() - timedelta(days=days_old)
+            cutoff_date = datetime.now() - timedelta(days=days_old)
             old_tasks = db.query(VideoProcessTask).filter(
                 VideoProcessTask.status.in_([TaskStatus.completed, TaskStatus.error]),
                 VideoProcessTask.updated_at < cutoff_date,

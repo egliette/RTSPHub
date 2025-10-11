@@ -1,23 +1,4 @@
 services:
-  postgres:
-    image: postgres:15
-    container_name: rtsp_hub_postgres_dev
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}_dev
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      TZ: ${TZ:-UTC}
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    networks:
-      - person_detection
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}_dev"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   minio:
     image: minio/minio:latest
     container_name: rtsp_hub_minio_dev
@@ -70,7 +51,7 @@ services:
         LOG_DIR: ${LOG_DIR}
     container_name: rtsp_hub_dev
     environment:
-      DATABASE_URL: ${DATABASE_URL}_dev
+      DATABASE_URL: ${DATABASE_URL}
       API_TOKEN: ${API_TOKEN}
       MINIO_ENABLED: ${MINIO_ENABLED}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT}
@@ -99,8 +80,6 @@ services:
     depends_on:
       media-service:
         condition: service_started
-      postgres:
-        condition: service_healthy
       minio:
         condition: service_healthy
     command: >

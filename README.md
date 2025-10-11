@@ -18,7 +18,7 @@ RTSPHub is a service designed for camera-related tasks and computer vision appli
 1. **Stream Management**: Create proxy streams, monitor health, and manage streams via REST API with automatic recording
 2. **Video Retrieval**: Provide API to return requested video based on time range
 3. **Storage Options**: Local filesystem or MinIO object storage with presigned URLs
-4. **Data Persistence**: Store stream information and task metadata in PostgreSQL
+4. **Data Persistence**: Store stream information and task metadata in SQLite
 
 ## 3. Installation
 

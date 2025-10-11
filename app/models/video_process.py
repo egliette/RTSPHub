@@ -3,7 +3,8 @@ from uuid import uuid4
 
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import String, Uuid, func
+from sqlalchemy import String, func
+from sqlalchemy.dialects.sqlite import CHAR
 
 from app.database.connection import Base
 
@@ -22,7 +23,7 @@ class VideoProcessTask(Base):
 
     __tablename__ = "video_merge_tasks"
 
-    id = Column(Uuid, primary_key=True, default=uuid4)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid4()))
     source_rtsp_path = Column(String, nullable=False)
     start_time = Column(String, nullable=False)  # Store as string, parse when needed
     end_time = Column(String, nullable=False)
