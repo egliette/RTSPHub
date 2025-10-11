@@ -1,5 +1,9 @@
 # RTSPHub
 
+[![CI Pipeline](https://github.com/egliette/RTSPHub/actions/workflows/ci.yml/badge.svg)](https://github.com/egliette/RTSPHub/actions/workflows/ci.yml)
+
+[![Publish Release to GHCR](https://github.com/egliette/RTSPHub/actions/workflows/publish-release.yml/badge.svg)](https://github.com/egliette/RTSPHub/actions/workflows/publish-release.yml)
+
 A FastAPI-based recording service that connects to RTSP streams, proxies them via MediaMTX, and provides APIs to record and store videos locally or in MinIO.
 
 ![RTSP Hub diagram](assets/images/rtsp_hub_diagram.png)
