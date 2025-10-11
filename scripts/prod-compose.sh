@@ -6,9 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR%/scripts}"
 
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
-NETWORK_NAME=""
-CONTAINER_NAME=""
-APP_SERVICE=""
+NETWORK_NAME="rtsp_hub_network"
+CONTAINER_NAME="rtsp_hub"
+APP_SERVICE="rtsp-hub"
 
 REBUILD=false
 ATTACH_SHELL=false

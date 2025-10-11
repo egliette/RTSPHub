@@ -8,7 +8,7 @@ services:
       TZ: ${TZ:-UTC}
     command: server /data --console-address ":9001"
     networks:
-      - person_detection
+      - rtsp_hub_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -38,7 +38,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
-      - person_detection
+      - rtsp_hub_network
 
   rtsp-hub:
     image: rtsp-hub:dev
@@ -89,8 +89,8 @@ services:
       "
     tty: true
     networks:
-      - person_detection
+      - rtsp_hub_network
 
 networks:
-  person_detection:
+  rtsp_hub_network:
     external: true

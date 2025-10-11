@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR%/scripts}"
 
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.dev.yml"
-NETWORK_NAME="person_detection"
+NETWORK_NAME="rtsp_hub_network"
 CONTAINER_NAME="rtsp_hub_dev"
 APP_SERVICE="rtsp-hub"
 

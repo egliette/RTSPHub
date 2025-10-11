@@ -22,7 +22,36 @@ RTSPHub is a service designed for camera-related tasks and computer vision appli
 
 ## 3. Installation
 
+### Using Docker Compose
 
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd RTSPHub
+   ```
+
+2. **Create environment file:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+3. **Build and start the services:**
+   ```bash
+   # For development
+   ./scripts/dev-compose.sh
+
+   # For production
+   ./scripts/prod-compose.sh
+
+   # For testing
+   ./scripts/test-compose.sh
+   ```
+
+4. **Access the services:**
+   - RTSPHub API: http://localhost:8000
+   - MediaMTX: http://localhost:8889
+   - MinIO Console: http://localhost:9001
 
 ## 4. API Endpoints
 
@@ -37,6 +66,7 @@ RTSPHub is a service designed for camera-related tasks and computer vision appli
 - `GET /api/video-process/tasks` - List all video tasks
 - `GET /api/video-process/tasks/{task_id}` - Get task status
 - `DELETE /api/video-process/tasks/{task_id}` - Delete task
+- `DELETE /api/video-process/tasks/{task_id}/video` - Delete video file based on task ID
 
 ## 5. TODO
 

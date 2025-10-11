@@ -6,8 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR%/scripts}"
 
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.test.yml"
-NETWORK_NAME=""
-APP_SERVICE=""
+NETWORK_NAME="rtsp_hub_network"
+APP_SERVICE="rtsp-hub"
 
 REBUILD=false
 KEEP_RUNNING=false
