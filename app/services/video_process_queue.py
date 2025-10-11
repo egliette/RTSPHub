@@ -7,8 +7,10 @@ from datetime import datetime, timedelta
 from typing import Callable, Dict, List, Optional
 from uuid import UUID
 
+from app.config.settings import settings
 from app.crud.video_process import VideoProcessDAO
 from app.models.video_process import TaskStatus, VideoProcessTask
+from app.services.minio_service import MinIOService
 from app.utils.logger import log
 from app.utils.media import get_video_duration
 
@@ -127,9 +129,12 @@ class VideoProcessWorker:
                 if os.path.exists(segment):
                     os.remove(segment)
 
+            # Upload to MinIO if available
+            minio_object_path = self._upload_to_minio(output_path)
+
             # Update task status to completed with results
             self.task.status = TaskStatus.completed
-            self.task.result_video_path = output_path
+            self.task.result_video_path = minio_object_path or output_path
             self.task.message = (
                 f"Successfully processed {len(relevant_videos)} video segments"
             )
@@ -138,7 +143,7 @@ class VideoProcessWorker:
                 self.task_id,
                 TaskStatus.completed,
                 message=self.task.message,
-                result_video_path=output_path,
+                result_video_path=self.task.result_video_path,
             )
         except Exception as e:
             log.err(f"Task {self.task_id} failed: {str(e)}")
@@ -152,6 +157,38 @@ class VideoProcessWorker:
                 self.cleanup_task()
             except Exception as e:
                 log.warn(f"Error in cleanup task for video process {self.task_id}: {e}")
+
+    def _upload_to_minio(self, output_path: str) -> Optional[str]:
+        """Upload video to MinIO if enabled and remove local file on success.
+
+        Args:
+            output_path: Path to the local video file to upload
+
+        Returns:
+            MinIO object path if upload successful, local path if MinIO disabled, None if upload failed
+        """
+        if not settings.MINIO_ENABLED:
+            return output_path
+
+        try:
+            minio_service = MinIOService.get_instance()
+            minio_object_path = minio_service.generate_object_name(
+                str(self.task.id),
+                self.task.source_rtsp_path,
+                self.task.start_time,
+                self.task.end_time,
+            )
+            uploaded_path = minio_service.upload_video(output_path, minio_object_path)
+
+            # Remove local file after successful upload
+            if os.path.exists(output_path):
+                os.remove(output_path)
+
+            return uploaded_path
+
+        except Exception as e:
+            log.err(f"Failed to upload video to MinIO: {e}")
+            return None
 
     def _find_relevant_videos(
         self, folder: str, start_dt: datetime, end_dt: datetime
@@ -396,8 +433,6 @@ class VideoProcessQueueManager:
         self._start_next_task()
         return removed
 
-
-from app.config.settings import settings
 
 queue_manager = VideoProcessQueueManager(
     video_record_path=settings.VIDEO_RECORD_PATH,

@@ -2,15 +2,37 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException
 
+from app.config.settings import settings
+from app.models.video_process import VideoProcessTask
 from app.schema.video_process import (
     TaskStatus,
     VideoProcessRequest,
     VideoProcessResponse,
     VideoProcessStatus,
 )
+from app.services.minio_service import MinIOService
 from app.services.video_process_service import video_service
 
 router = APIRouter(prefix="/video-process", tags=["video-process"])
+
+
+def _get_video_uri(task: VideoProcessTask) -> str:
+    """Get the appropriate video URI.
+
+    If MinIO is enabled and `result_video_path` stores a MinIO object name, return a presigned URL;
+    otherwise return the local file path.
+    """
+    if not task.result_video_path:
+        return ""
+
+    if not settings.MINIO_ENABLED:
+        return task.result_video_path
+
+    try:
+        minio_service = MinIOService.get_instance()
+        return minio_service.generate_presigned_url(task.result_video_path)
+    except Exception:
+        return task.result_video_path
 
 
 @router.post("/tasks", response_model=VideoProcessResponse)
@@ -51,7 +73,7 @@ async def list_video_tasks():
                 task_id=task.id,
                 status=TaskStatus(task.status.value),
                 message=task.message,
-                result_video_uri=task.result_video_path,
+                result_video_uri=_get_video_uri(task),
                 created_at=task.created_at,
                 updated_at=task.updated_at or task.created_at,
             )
@@ -70,7 +92,7 @@ async def get_video_task_status(task_id: str):
             task_id=task.id,
             status=TaskStatus(task.status.value),
             message=task.message,
-            result_video_uri=task.result_video_path,
+            result_video_uri=_get_video_uri(task),
             created_at=task.created_at,
             updated_at=task.updated_at or task.created_at,
         )

@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     VIDEO_PROCESSED_PATH: str = Field(default="/app/assets/processed_videos")
     RECORD_SEGMENT_DURATION: str = Field(default="1h")
 
+    # MinIO settings
+    MINIO_ENABLED: bool = Field(default=False)
+    MINIO_ENDPOINT: str = Field(default="minio:9000")
+    MINIO_ACCESS_KEY: str = Field(default="YOUR_ACCESS_KEY")
+    MINIO_SECRET_KEY: str = Field(default="YOUR_SECRET_KEY")
+    MINIO_SECURE: bool = Field(default=False)
+    MINIO_BUCKET_NAME: str = Field(default="videos")
+
     @property
     def media_server_rtsp_base_url(self) -> str:
         """Construct RTSP base URL with credentials."""

@@ -2,6 +2,7 @@ import os
 import shutil
 from datetime import datetime, timedelta
 from typing import Iterator
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -119,3 +120,35 @@ def make_video_process_request():
         ).model_dump()
 
     return _make
+
+
+@pytest.fixture()
+def disable_minio():
+    """Fixture to disable MinIO for testing with local storage."""
+    with patch.object(settings, "MINIO_ENABLED", False):
+        yield
+
+
+@pytest.fixture()
+def enable_minio():
+    """Fixture to enable MinIO for testing with MinIO storage."""
+    with patch.object(settings, "MINIO_ENABLED", True):
+        yield
+
+
+@pytest.fixture()
+def client_with_local_storage(disable_minio):
+    """Test client with MinIO disabled (local storage only)."""
+    token = settings.API_TOKEN
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    with TestClient(app, headers=headers) as c:
+        yield c
+
+
+@pytest.fixture()
+def client_with_minio_storage(enable_minio):
+    """Test client with MinIO enabled (MinIO storage)."""
+    token = settings.API_TOKEN
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    with TestClient(app, headers=headers) as c:
+        yield c
