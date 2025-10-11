@@ -15,12 +15,46 @@ env:
   LOG_DIR: logs
   LOG_TO_STDOUT: "true"
   LOG_LEVEL: INFO
-  LOG_MAX_DAYS: "33"
+  LOG_MAX_DAYS: "3"
   # Container user mapping
   APP_UID: "1000"
   APP_GID: "1000"
   # Docker network
-  DOCKER_NETWORK_NAME:
+  DOCKER_NETWORK_NAME: rtsp_hub_network
+  # Timezone
+  TZ: UTC
+  # Database
+  DATABASE_URL: "sqlite:///./rtsp_hub.db"
+  # API
+  API_PREFIX: "/api"
+  PROJECT_NAME: ""
+  API_TOKEN: ""
+  # Minio configuration
+  MINIO_ENABLED: "false"
+  MINIO_ENDPOINT: "minio:9000"
+  MINIO_ACCESS_KEY: "YOUR_ACCESS_KEY"
+  MINIO_SECRET_KEY: "YOUR_SECRET_KEY"
+  MINIO_SECURE: "false"
+  MINIO_BUCKET_NAME: "rtsp-hub-videos"
+  # Media server configuration
+  MEDIA_SERVER_HOST: "media-service"
+  MEDIA_SERVER_PORT: "8554"
+  RTSP_TRANSPORT: "tcp"
+  MEDIA_USERNAME: "admin"
+  MEDIA_PASSWORD: "admin123"
+  # Recording configuration
+  RECORD_ENABLED: "yes"
+  RECORD_PATH: "/app/assets/record/%path/%Y-%m-%d_%H-%M-%S"
+  RECORD_FORMAT: "fmp4"
+  RECORD_PART_DURATION: "1s"
+  RECORD_MAX_PART_SIZE: "50M"
+  RECORD_SEGMENT_DURATION: "2m"
+  RECORD_DELETE_AFTER: "10m"
+  # Video processing
+  VIDEO_RECORD_PATH: "/app/assets/record"
+  VIDEO_PROCESSED_PATH: "/app/assets/processed_videos"
+  # Application settings
+  RESTART_BACKOFF_SECONDS: "10"
 
 jobs:
   lint:
@@ -64,7 +98,7 @@ jobs:
 
     - name: Build test image
       run: |
-        docker compose -f docker-compose.test.yml build app_test
+        docker compose -f docker-compose.test.yml build rtsp-hub
 
     - name: Create network
       run: |
@@ -72,7 +106,7 @@ jobs:
 
     - name: Run tests
       run: |
-        docker compose -f docker-compose.test.yml up --exit-code-from app_test app_test
+        docker compose -f docker-compose.test.yml up --exit-code-from rtsp-hub rtsp-hub
 
     - name: Cleanup
       if: always()
