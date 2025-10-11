@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.schema.video_process import TaskStatus
-from app.utils.logger import log
+from app.tests.helpers import delete_video_file
 from app.utils.media import get_video_duration
 
 
@@ -62,12 +62,7 @@ class TestVideoProcessRoutesWithLocalStorage:
         requested_seconds = (end_dt - start_dt).total_seconds()
         assert abs(result_duration - requested_seconds) <= 1.0
 
-        # Cleanup: Remove result video file
-        try:
-            if output_path and os.path.exists(output_path):
-                os.remove(output_path)
-        except Exception as e:
-            log.warn(f"Failed to cleanup test result video {output_path}: {e}")
+        delete_video_file(client_with_local_storage, task_id, output_path)
 
     @pytest.mark.slow
     def test_video_task_exactly_two_videos(
@@ -120,12 +115,7 @@ class TestVideoProcessRoutesWithLocalStorage:
         requested_seconds = (end_dt - start_dt).total_seconds()
         assert abs(result_duration - requested_seconds) <= 1.0
 
-        # Cleanup: Remove result video file
-        try:
-            if output_path and os.path.exists(output_path):
-                os.remove(output_path)
-        except Exception as e:
-            log.warn(f"Failed to cleanup test result video {output_path}: {e}")
+        delete_video_file(client_with_local_storage, task_id, output_path)
 
     @pytest.mark.slow
     def test_video_task_exactly_three_videos(
@@ -179,9 +169,4 @@ class TestVideoProcessRoutesWithLocalStorage:
         requested_seconds = (end_dt - start_dt).total_seconds()
         assert abs(result_duration - requested_seconds) <= 1.0
 
-        # Cleanup: Remove result video file
-        try:
-            if output_path and os.path.exists(output_path):
-                os.remove(output_path)
-        except Exception as e:
-            log.warn(f"Failed to cleanup test result video {output_path}: {e}")
+        delete_video_file(client_with_local_storage, task_id, output_path)

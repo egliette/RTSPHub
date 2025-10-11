@@ -118,3 +118,34 @@ async def delete_video_task(task_id: str):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/tasks/{task_id}/video")
+async def delete_video_file(task_id: str):
+    """Delete the video file associated with a specific task.
+
+    Deletes the actual video file from storage (local filesystem or MinIO).
+    """
+    try:
+        task = video_service.get_task_status(task_id)
+
+        if not task.result_video_path:
+            raise HTTPException(
+                status_code=400, detail="No video file associated with this task"
+            )
+
+        deleted = video_service.delete_video_file(task_id)
+
+        if not deleted:
+            raise HTTPException(
+                status_code=404, detail="Video file not found or could not be deleted"
+            )
+
+        return {"status": "ok", "message": "Video file deleted successfully"}
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

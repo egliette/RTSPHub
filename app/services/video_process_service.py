@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import List
 from uuid import UUID
 
+from app.config.settings import settings
 from app.crud.video_process import VideoProcessDAO
 from app.models.video_process import TaskStatus, VideoProcessTask
 from app.services.video_process_queue import VideoProcessQueueManager
@@ -11,6 +12,14 @@ from app.utils.logger import log
 
 class VideoProcessService:
     """Service for video operations with validation."""
+
+    @staticmethod
+    def _validate_uuid(task_id: str) -> UUID:
+        """Validate UUID format and return UUID object."""
+        try:
+            return UUID(task_id)
+        except ValueError:
+            raise ValueError("Invalid task ID format")
 
     def __init__(
         self,
@@ -30,7 +39,6 @@ class VideoProcessService:
             video_processed_path=self.video_processed_path,
         )
         self.dao = VideoProcessDAO()
-        self._clear_all_tasks_on_startup()
 
     def validate_request(
         self, source_rtsp_path: str, start_time: str, end_time: str
@@ -106,11 +114,7 @@ class VideoProcessService:
 
     def get_task_status(self, task_id: str) -> VideoProcessTask:
         """Get the status of a task by ID."""
-        # Validate UUID format but pass as string to DAO
-        try:
-            UUID(task_id)  # Validate format
-        except ValueError:
-            raise ValueError("Invalid task ID format")
+        self._validate_uuid(task_id)
 
         task = self.dao.get(task_id)
         if task is None:
@@ -125,10 +129,7 @@ class VideoProcessService:
 
     def remove_task(self, task_id: str) -> bool:
         """Remove a task by id. Stops active worker or removes pending, then deletes DB record."""
-        try:
-            uuid_task_id = UUID(task_id)  # Validate format
-        except ValueError:
-            raise ValueError("Invalid task ID format")
+        uuid_task_id = self._validate_uuid(task_id)
 
         removed = self.queue_manager.remove_task(uuid_task_id)
         if not removed:
@@ -140,16 +141,48 @@ class VideoProcessService:
                 return False
         return True
 
-    def _clear_all_tasks_on_startup(self) -> None:
-        """Clear all tasks from database on service startup."""
-        try:
-            deleted_count = self.dao.clear_all_tasks()
-            log.info(f"Cleared {deleted_count} existing tasks from database on startup")
-        except Exception as e:
-            log.err(f"Failed to clear tasks on startup: {e}")
+    def delete_video_file(self, task_id: str) -> bool:
+        """Delete the video file associated with a task.
 
+        Args:
+            task_id: The task ID to delete the video file for
 
-from app.config.settings import settings
+        Returns:
+            True if file was deleted successfully, False otherwise
+        """
+        self._validate_uuid(task_id)
+
+        task = self.dao.get(task_id)
+        if not task or not task.result_video_path:
+            return False
+
+        video_path = task.result_video_path
+
+        if settings.MINIO_ENABLED:
+            try:
+                from app.services.minio_service import MinIOService
+
+                minio_service = MinIOService.get_instance()
+                success = minio_service.delete_video(video_path)
+                if success:
+                    log.info(f"Deleted video file from MinIO: {video_path}")
+                return success
+            except Exception as e:
+                log.err(f"Failed to delete video file from MinIO: {e}")
+                return False
+        else:
+            try:
+                if os.path.exists(video_path):
+                    os.remove(video_path)
+                    log.info(f"Deleted video file from local filesystem: {video_path}")
+                    return True
+                else:
+                    log.warning(f"Video file not found: {video_path}")
+                    return False
+            except Exception as e:
+                log.err(f"Failed to delete video file from local filesystem: {e}")
+                return False
+
 
 video_service = VideoProcessService(
     video_record_path=settings.VIDEO_RECORD_PATH,

@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.schema.video_process import TaskStatus
+from app.tests.helpers import delete_video_file
 from app.utils.logger import log
 from app.utils.media import get_video_duration
 
@@ -78,6 +79,8 @@ class TestVideoProcessRoutesWithMinIOStorage:
                         f"Failed to cleanup temporary video file {temp_file.name}: {e}"
                     )
 
+        delete_video_file(client_with_minio_storage, task_id)
+
     @pytest.mark.slow
     def test_video_task_exactly_two_videos(
         self,
@@ -142,6 +145,8 @@ class TestVideoProcessRoutesWithMinIOStorage:
                     log.warn(
                         f"Failed to cleanup temporary video file {temp_file.name}: {e}"
                     )
+
+        delete_video_file(client_with_minio_storage, task_id)
 
     @pytest.mark.slow
     def test_video_task_exactly_three_videos(
@@ -208,3 +213,5 @@ class TestVideoProcessRoutesWithMinIOStorage:
                     log.warn(
                         f"Failed to cleanup temporary video file {temp_file.name}: {e}"
                     )
+
+        delete_video_file(client_with_minio_storage, task_id)
