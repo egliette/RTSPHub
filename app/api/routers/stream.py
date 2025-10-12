@@ -53,3 +53,25 @@ def health_check(stream_id: str):
         return HealthResponse(stream_id=stream_id, state=state)
     except KeyError:
         raise HTTPException(status_code=404, detail="stream not found")
+
+
+@router.post("/streams/{stream_id}/restart", status_code=204)
+def restart_stream(stream_id: str):
+    """Restart a stopped or error stream."""
+    try:
+        stream_manager.restart_stream(stream_id)
+        return JSONResponse(status_code=204, content=None)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="stream not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/streams/{stream_id}/stop", status_code=204)
+def stop_stream(stream_id: str):
+    """Stop a running stream."""
+    try:
+        stream_manager.stop_stream(stream_id)
+        return JSONResponse(status_code=204, content=None)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="stream not found")

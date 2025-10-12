@@ -217,15 +217,15 @@ class StreamManager:
 
     def _recover_streams(self) -> None:
         """Recover running streams from database after restart."""
+        if self._dao is None:
+            log.info("DAO is not available, skipping stream recovery")
+            return
+
         try:
             for stream_data in self._dao.list():
                 if stream_data.state != StreamState.stopped:
                     try:
-                        self.add_stream(
-                            stream_data.source_uri,
-                            stream_data.output_url,
-                            stream_data.stream_id,
-                        )
+                        self.restart_stream(stream_data.stream_id)
                     except Exception as e:
                         log.err(
                             f"Failed to recover stream {stream_data.stream_id}: {e}"
@@ -269,7 +269,7 @@ class StreamManager:
             if assigned_id in self._workers or (
                 self._dao is not None and self._dao.exists(assigned_id)
             ):
-                raise ValueError("stream_id already exists")
+                raise ValueError(f"{stream_id} already exists")
             if not output_url:
                 raise ValueError("output_url is required")
             target_url = output_url
@@ -322,7 +322,7 @@ class StreamManager:
             }
 
     def get_state(self, stream_id: str) -> StreamState:
-        """Get the `StreamState` for a specific stream.
+        """Get the `StreamState` for a specific stream from the database or worker.
 
         Args:
             stream_id: Identifier of the stream to query.
@@ -333,11 +333,79 @@ class StreamManager:
         Raises:
             KeyError: If the stream_id is not found.
         """
+        if self._dao is not None:
+            stream_data = self._dao.get(stream_id)
+            if not stream_data:
+                raise KeyError("stream not found")
+
+            return StreamState(stream_data.state)
+
         with self._lock:
             worker = self._workers.get(stream_id)
             if not worker:
                 raise KeyError("stream not found")
             return worker.get_state()
+
+    def restart_stream(self, stream_id: str) -> None:
+        """Restart a stream by removing and adding it again.
+
+        Args:
+            stream_id: Identifier of the stream to restart.
+
+        Raises:
+            KeyError: If the stream_id is not found.
+        """
+        if self._dao is not None:
+            stream_data = self._dao.get(stream_id)
+            if not stream_data:
+                raise KeyError("stream not found")
+            source_uri = stream_data.source_uri
+            output_url = stream_data.output_url
+        else:
+            with self._lock:
+                worker = self._workers.get(stream_id)
+                if not worker:
+                    raise KeyError("stream not found")
+                source_uri = worker.source_uri
+                output_url = worker.output_url
+
+        self.remove_stream(stream_id)
+
+        self.add_stream(
+            source_uri=source_uri,
+            output_url=output_url,
+            stream_id=stream_id,
+        )
+
+        log.info(f"Restarted stream {stream_id}")
+
+    def stop_stream(self, stream_id: str) -> None:
+        """Stop a running stream and update its state to stopped.
+
+        Args:
+            stream_id: Identifier of the stream to stop.
+
+        Raises:
+            KeyError: If the stream_id is not found.
+        """
+        if self._dao is not None:
+            stream_data = self._dao.get(stream_id)
+            if not stream_data:
+                raise KeyError("stream not found")
+            self._dao.update_state(stream_id, StreamState.stopped)
+        else:
+            with self._lock:
+                worker = self._workers.get(stream_id)
+                if not worker:
+                    raise KeyError("stream not found")
+
+        with self._lock:
+            worker = self._workers.pop(stream_id, None)
+
+        if worker:
+            worker.stop()
+
+        log.info(f"Stopped stream {stream_id}")
 
 
 from app.config.settings import settings
