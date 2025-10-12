@@ -74,7 +74,9 @@ RTSPHub is a service designed for camera-related tasks and computer vision appli
 
 ## 5. TODO
 
-- [ ] Update to async implementation
+- [ ] Handle edge case where the requested time range is currently being recorded
+- [ ] Handle edge case where the requested time range overlaps on the left with existing recorded videos (start_time < oldest_video_start_time < end_time)
 - [ ] Allow recording in the future (end time in the future)
 - [ ] Add route to request from + or - from the current time
+- [ ] Update to async implementation
 - [ ] Auto generate documentation
