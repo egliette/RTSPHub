@@ -69,7 +69,7 @@ class VideoProcessService:
                 f"Invalid end_time format: {end_time}. Expected: 'YYYY-MM-DD HH:MM:SS'"
             )
 
-        # Ensure start time is earlier than the newest available video
+        # Ensure start time is earlier than the newest available video and end time is later than the oldest
         parsed_datetimes: List[datetime] = []
         for filename in video_files:
             try:
@@ -79,10 +79,18 @@ class VideoProcessService:
                 continue
         if parsed_datetimes:
             newest_video_dt = max(parsed_datetimes)
+            oldest_video_dt = min(parsed_datetimes)
+
             if not (start_dt < newest_video_dt):
                 raise ValueError(
                     f"Start time {start_dt} must be earlier than the newest available video: "
                     f"{newest_video_dt.strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+
+            if not (end_dt > oldest_video_dt):
+                raise ValueError(
+                    f"End time {end_dt} must be later than the oldest available video: "
+                    f"{oldest_video_dt.strftime('%Y-%m-%d %H:%M:%S')}"
                 )
 
         # Validate time logic
