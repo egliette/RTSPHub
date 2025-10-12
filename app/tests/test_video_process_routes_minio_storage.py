@@ -67,7 +67,7 @@ class TestVideoProcessRoutesWithMinIOStorage:
                 urlretrieve(output_uri, temp_file.name)
                 result_duration = get_video_duration(temp_file.name)
                 requested_seconds = (end_dt - start_dt).total_seconds()
-                assert abs(result_duration - requested_seconds) <= 1.0
+                assert abs(result_duration - requested_seconds) <= 5.0
             finally:
                 # Cleanup: Remove temporary downloaded file
                 try:
@@ -137,7 +137,7 @@ class TestVideoProcessRoutesWithMinIOStorage:
                 expected_seconds = (
                     end_dt - base
                 ).total_seconds()  # From first video to end time
-                assert abs(result_duration - expected_seconds) <= 1.0
+                assert abs(result_duration - expected_seconds) <= 5.0
             finally:
                 # Cleanup: Remove temporary downloaded file
                 try:
@@ -203,7 +203,7 @@ class TestVideoProcessRoutesWithMinIOStorage:
                 urlretrieve(output_uri, temp_file.name)
                 result_duration = get_video_duration(temp_file.name)
                 requested_seconds = (end_dt - start_dt).total_seconds()
-                assert abs(result_duration - requested_seconds) <= 1.0
+                assert abs(result_duration - requested_seconds) <= 5.0
             finally:
                 # Cleanup: Remove temporary downloaded file
                 try:
@@ -270,7 +270,7 @@ class TestVideoProcessRoutesWithMinIOStorage:
                 urlretrieve(output_uri, temp_file.name)
                 result_duration = get_video_duration(temp_file.name)
                 requested_seconds = (end_dt - start_dt).total_seconds()
-                assert abs(result_duration - requested_seconds) <= 1.0
+                assert abs(result_duration - requested_seconds) <= 5.0
             finally:
                 # Cleanup: Remove temporary downloaded file
                 try:

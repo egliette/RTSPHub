@@ -29,7 +29,7 @@ def source_uri() -> str:
 
 
 @pytest.fixture()
-def make_add_stream_payload(source_uri):
+def make_add_stream_payload():
 
     def _make(
         source_uri: str = "/app/assets/videos/big_buck_bunny.mp4",
