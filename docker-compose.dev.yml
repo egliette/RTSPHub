@@ -34,7 +34,7 @@ services:
       MTX_AUTHINTERNALUSERS_0_PERMISSIONS_3_ACTION: api
     volumes:
       - ./mediamtx.yml:/mediamtx.yml
-      - /assets/record:${VIDEO_RECORD_PATH}
+      - ./assets/record:${VIDEO_RECORD_PATH}
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
