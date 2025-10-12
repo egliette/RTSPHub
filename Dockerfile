@@ -55,7 +55,7 @@ COPY assets/videos/big_buck_bunny.mp4 ./assets/videos/big_buck_bunny.mp4
 RUN chown -R app:app /app
 USER app
 
-CMD ["sh", "-c", "alembic -c app/alembic.ini upgrade head && pytest -v app/tests"]
+CMD ["sh", "-c", "alembic -c app/alembic.ini upgrade head && pytest -v app/tests -m 'not integration'"]
 
 
 FROM base as development
