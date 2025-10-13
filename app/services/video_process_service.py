@@ -145,16 +145,13 @@ class VideoProcessService:
     def remove_task(self, task_id: str) -> bool:
         """Remove a task by id. Stops active worker or removes pending, then deletes DB record."""
         uuid_task_id = self._validate_uuid(task_id)
-
-        removed = self.queue_manager.remove_task(uuid_task_id)
-        if not removed:
-            # If not in memory queues/workers, attempt to delete from DB directly
-            try:
-                return self.dao.delete(task_id)
-            except Exception as e:
-                log.err(f"Failed to delete task {task_id} from database: {e}")
-                return False
-        return True
+        queue_removed = self.queue_manager.remove_task(uuid_task_id)
+        try:
+            db_removed = self.dao.delete(task_id)
+            return queue_removed or db_removed
+        except Exception as e:
+            log.err(f"Failed to delete task {task_id} from database: {e}")
+            return queue_removed
 
     def delete_video_file(self, task_id: str) -> bool:
         """Delete the video file associated with a task.
@@ -192,7 +189,7 @@ class VideoProcessService:
                     log.info(f"Deleted video file from local filesystem: {video_path}")
                     return True
                 else:
-                    log.warning(f"Video file not found: {video_path}")
+                    log.warn(f"Video file not found: {video_path}")
                     return False
             except Exception as e:
                 log.err(f"Failed to delete video file from local filesystem: {e}")

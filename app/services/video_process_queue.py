@@ -348,7 +348,6 @@ class VideoProcessQueueManager:
         self._lock = threading.Lock()
         self._workers: Dict[UUID, VideoProcessWorker] = {}
         self._pending_tasks: list[VideoProcessTask] = []
-        self._dao = VideoProcessDAO()
 
     def add_task(self, task: VideoProcessTask) -> None:
         """Add a task to the queue."""
@@ -359,20 +358,25 @@ class VideoProcessQueueManager:
             self._start_next_task()
 
     def get_task_status(self, task_id: UUID) -> Optional[VideoProcessTask]:
-        """Get the status of a task."""
+        """Get the status of a task from in-memory state (active workers and pending tasks).
+
+        Args:
+            task_id: The UUID of the task to check
+
+        Returns:
+            VideoProcessTask if found in active workers or pending tasks, None otherwise
+        """
         with self._lock:
+            # Check active workers first
             if task_id in self._workers:
                 return self._workers[task_id].task
 
+            # Check pending tasks
             for task in self._pending_tasks:
                 if task.id == task_id:
                     return task
 
-            return self._dao.get(task_id)
-
-    def list_all_tasks(self) -> list[VideoProcessTask]:
-        """List all tasks from database (pending, active, completed, and error)."""
-        return self._dao.list_all()
+            return None
 
     def _start_next_task(self) -> None:
         """Start the next pending task if we have available workers."""
@@ -387,13 +391,13 @@ class VideoProcessQueueManager:
             task,
             self.video_record_path,
             self.video_processed_path,
-            cleanup_task=lambda: self._remove_task(task.id),
+            cleanup_task=lambda: self._cleanup_task(task.id),
         )
         self._workers[task.id] = worker
         worker.start()
         log.info(f"Started worker for video processing task {task.id}")
 
-    def _remove_task(self, task_id: UUID) -> None:
+    def _cleanup_task(self, task_id: UUID) -> None:
         """Remove a completed task from active workers."""
         with self._lock:
             worker = self._workers.pop(task_id, None)
@@ -424,12 +428,6 @@ class VideoProcessQueueManager:
                     self._pending_tasks.pop(i)
                     removed = True
                     break
-
-        try:
-            self._dao.delete(task_id)
-        except Exception as e:
-            log.warn(f"Failed to delete task {task_id} from database: {e}")
-
         self._start_next_task()
         return removed
 
