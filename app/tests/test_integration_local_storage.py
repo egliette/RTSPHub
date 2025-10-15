@@ -30,7 +30,7 @@ class TestIntegrationLocalStorage:
 
         This test:
         1. Creates a stream and waits for it to be running
-        2. Waits for 2 * RECORD_SEGMENT_DURATION to ensure recording has occurred
+        2. Waits for 1 * RECORD_SEGMENT_DURATION to ensure recording has occurred
         3. Requests video processing for specified duration from current time
         4. Verifies the video processing completes successfully
 
@@ -105,10 +105,10 @@ class TestIntegrationLocalStorage:
             is_running
         ), f"Stream {stream_id} did not reach running state within {max_wait_time} seconds"
 
-        # 3. Wait for 2 * RECORD_SEGMENT_DURATION to ensure recording has occurred
-        wait_duration = 2 * segment_duration_seconds
+        # 3. Wait for 1 * RECORD_SEGMENT_DURATION to ensure recording has occurred
+        wait_duration = 1 * segment_duration_seconds
         log.info(
-            f"Waiting for {wait_duration} seconds (2 * {segment_duration_str}) for recording..."
+            f"Waiting for {wait_duration} seconds (1 * {segment_duration_str}) for recording..."
         )
 
         chunk_duration = 30
@@ -244,9 +244,9 @@ class TestIntegrationLocalStorage:
 
         This test:
         1. Creates a stream and waits for it to be running
-        2. Waits for 3 * RECORD_SEGMENT_DURATION to ensure recording has occurred
-        3. Requests video processing for a time range from current_time - 2.5 * segment_duration
-           to current_time - 1.5 * segment_duration
+        2. Waits for 2 * RECORD_SEGMENT_DURATION to ensure recording has occurred
+        3. Requests video processing for a time range from current_time - 1.5 * segment_duration
+           to current_time - 0.5 * segment_duration
         4. Verifies the video processing completes successfully
         """
         segment_duration_str = settings.RECORD_SEGMENT_DURATION
@@ -317,10 +317,10 @@ class TestIntegrationLocalStorage:
             is_running
         ), f"Stream {stream_id} did not reach running state within {max_wait_time} seconds"
 
-        # 3. Wait for 3 * RECORD_SEGMENT_DURATION to ensure recording has occurred
-        wait_duration = 3 * segment_duration_seconds
+        # 3. Wait for 2 * RECORD_SEGMENT_DURATION to ensure recording has occurred
+        wait_duration = 2 * segment_duration_seconds
         log.info(
-            f"Waiting for {wait_duration} seconds (3 * {segment_duration_str}) for recording..."
+            f"Waiting for {wait_duration} seconds (2 * {segment_duration_str}) for recording..."
         )
 
         chunk_duration = 30
@@ -353,10 +353,10 @@ class TestIntegrationLocalStorage:
                 )
 
         # 4. Calculate time range for video processing
-        # Request video from current_time - 2.5 * segment_duration to current_time - 1.5 * segment_duration
+        # Request video from current_time - 1.5 * segment_duration to current_time - 0.5 * segment_duration
         current_time = datetime.now()
-        start_offset = 2.5 * segment_duration_seconds
-        end_offset = 1.5 * segment_duration_seconds
+        start_offset = 1.5 * segment_duration_seconds
+        end_offset = 0.5 * segment_duration_seconds
 
         start_time_dt = current_time - timedelta(seconds=int(start_offset))
         end_time_dt = current_time - timedelta(seconds=int(end_offset))
