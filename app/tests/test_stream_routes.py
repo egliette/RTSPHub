@@ -167,3 +167,32 @@ def test_proxy_rtsp_from_rtsp_source(client: TestClient, make_add_stream_payload
     assert listed_final.status_code == 200, listed_final.text
     final_ids = {item["stream_id"] for item in listed_final.json()}
     assert src_id not in final_ids and proxy_id not in final_ids
+
+
+def test_video_process_end_time_before_oldest_video(
+    client: TestClient, make_video_process_request, setup_test_videos
+):
+    """Test video processing task creation with end time before oldest available video."""
+    from datetime import timedelta
+
+    base = setup_test_videos["base_time"]
+
+    end_dt = base - timedelta(seconds=30)  # 30 seconds before oldest video
+    start_dt = end_dt - timedelta(seconds=60)  # Start time 60 seconds before end time
+
+    start_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+    end_str = end_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    request_data = make_video_process_request(start_time=start_str, end_time=end_str)
+
+    response = client.post("/api/video-process/tasks", json=request_data)
+
+    assert (
+        response.status_code == 400
+    ), f"Expected status 400, got {response.status_code}. Response: {response.text}"
+    data = response.json()
+    assert "detail" in data
+    assert (
+        "End time" in data["detail"]
+        and "must be later than the oldest available video" in data["detail"]
+    )
