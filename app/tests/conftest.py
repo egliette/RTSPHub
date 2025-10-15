@@ -60,7 +60,7 @@ def test_processed_path() -> str:
     return settings.VIDEO_PROCESSED_PATH
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def setup_test_videos(source_uri: str, test_record_path: str) -> Iterator[dict]:
     """Set up exactly 5 videos spaced by the source clip duration for deterministic tests."""
     # Create test directory structure

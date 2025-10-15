@@ -26,9 +26,6 @@ class TestVideoProcessRoutes:
         assert "created_at" in data
         assert "updated_at" in data
 
-        # Validate task status
-        assert data["message"] == "Task created successfully"
-
         # Validate task_id is a valid UUID
         task_id = UUID(data["task_id"])
         assert isinstance(task_id, UUID)

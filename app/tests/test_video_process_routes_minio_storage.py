@@ -1,5 +1,6 @@
 import os
 import tempfile
+import time
 from datetime import timedelta
 from urllib.request import urlretrieve
 
@@ -40,8 +41,6 @@ class TestVideoProcessRoutesWithMinIOStorage:
             create_response.status_code == 200
         ), f"Expected status 200, got {create_response.status_code}. Response: {create_response.text}"
         task_id = create_response.json()["task_id"]
-
-        import time
 
         deadline = time.time() + 30
         final = None
@@ -106,8 +105,6 @@ class TestVideoProcessRoutesWithMinIOStorage:
             create_response.status_code == 200
         ), f"Expected status 200, got {create_response.status_code}. Response: {create_response.text}"
         task_id = create_response.json()["task_id"]
-
-        import time
 
         deadline = time.time() + 30
         final = None
@@ -177,8 +174,6 @@ class TestVideoProcessRoutesWithMinIOStorage:
         task_id = create_response.json()["task_id"]
 
         # Poll for completion
-        import time
-
         deadline = time.time() + 30
         final = None
         while time.time() < deadline:
@@ -244,8 +239,6 @@ class TestVideoProcessRoutesWithMinIOStorage:
         task_id = create_response.json()["task_id"]
 
         # Poll for completion
-        import time
-
         deadline = time.time() + 30
         final = None
         while time.time() < deadline:
