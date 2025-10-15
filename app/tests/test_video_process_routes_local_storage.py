@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import timedelta
 
 import pytest
@@ -37,8 +38,6 @@ class TestVideoProcessRoutesWithLocalStorage:
             create_response.status_code == 200
         ), f"Expected status 200, got {create_response.status_code}. Response: {create_response.text}"
         task_id = create_response.json()["task_id"]
-
-        import time
 
         deadline = time.time() + 30
         final = None
@@ -89,8 +88,6 @@ class TestVideoProcessRoutesWithLocalStorage:
             create_response.status_code == 200
         ), f"Expected status 200, got {create_response.status_code}. Response: {create_response.text}"
         task_id = create_response.json()["task_id"]
-
-        import time
 
         deadline = time.time() + 30
         final = None
@@ -146,8 +143,6 @@ class TestVideoProcessRoutesWithLocalStorage:
         task_id = create_response.json()["task_id"]
 
         # Poll for completion
-        import time
-
         deadline = time.time() + 30
         final = None
         while time.time() < deadline:
@@ -199,8 +194,6 @@ class TestVideoProcessRoutesWithLocalStorage:
         task_id = create_response.json()["task_id"]
 
         # Poll for completion
-        import time
-
         deadline = time.time() + 30
         final = None
         while time.time() < deadline:
@@ -223,3 +216,88 @@ class TestVideoProcessRoutesWithLocalStorage:
         assert abs(result_duration - requested_seconds) <= 5.0
 
         delete_video_file(client_with_local_storage, task_id, output_path)
+
+    @pytest.mark.slow
+    def test_video_task_three_concurrent_requests_single_video(
+        self,
+        client_with_local_storage: TestClient,
+        make_video_process_request,
+        setup_test_videos,
+    ):
+        """Test video processing with 3 concurrent requests all using time ranges from a single video."""
+        base = setup_test_videos["base_time"]
+        dur = setup_test_videos["video_duration"]
+
+        # Create 3 different time ranges all within the first video
+        time_ranges = [
+            (
+                base + timedelta(seconds=int(dur * 0.1)),
+                base + timedelta(seconds=int(dur * (i * 0.3))),
+            )
+            for i in range(1, 4)
+        ]
+        request_data_list = [
+            make_video_process_request(
+                start_time=start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                end_time=end_dt.strftime("%Y-%m-%d %H:%M:%S"),
+            )
+            for start_dt, end_dt in time_ranges
+        ]
+        create_responses = [
+            client_with_local_storage.post(
+                "/api/video-process/tasks", json=request_data
+            )
+            for request_data in request_data_list
+        ]
+
+        # Verify all tasks were created successfully
+        task_ids = []
+        for i, response in enumerate(create_responses):
+            assert (
+                response.status_code == 200
+            ), f"Task {i+1} creation failed: {response.text}"
+            task_ids.append(response.json()["task_id"])
+
+        # Poll for completion of all 3 tasks
+        deadline = time.time() + 60
+        results = {}
+
+        while time.time() < deadline and len(results) < len(task_ids):
+            for task_id in task_ids:
+                if task_id in results:
+                    continue
+                resp = client_with_local_storage.get(
+                    f"/api/video-process/tasks/{task_id}"
+                )
+                assert resp.status_code == 200
+                data = resp.json()
+                if data["status"] in [
+                    TaskStatus.completed.value,
+                    TaskStatus.error.value,
+                ]:
+                    results[task_id] = data
+            time.sleep(1)
+
+        assert len(results) == len(
+            task_ids
+        ), f"Not all tasks completed in time. Completed: {len(results)}/3"
+
+        for task_id, result in results.items():
+            assert (
+                result["status"] == TaskStatus.completed.value
+            ), f"Task {task_id} failed: {result.get('message')}"
+
+        # Verify output files and durations
+        for i, (task_id, result) in enumerate(results.items()):
+            output_path = result.get("result_video_uri")
+            assert output_path and os.path.exists(
+                output_path
+            ), f"Task {i+1} output file not found"
+            result_duration = get_video_duration(output_path)
+            start_dt, end_dt = time_ranges[i]
+            requested_seconds = (end_dt - start_dt).total_seconds()
+            assert (
+                abs(result_duration - requested_seconds) <= 5.0
+            ), f"Task {i+1} duration mismatch: expected ~{requested_seconds}s, got {result_duration}s"
+
+            delete_video_file(client_with_local_storage, task_id, output_path)
