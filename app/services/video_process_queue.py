@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import threading
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Callable, Dict, List, Optional
@@ -330,10 +331,14 @@ class VideoProcessWorker:
 
 
 class VideoProcessQueueManager:
-    """Manager for video task queue using threading."""
+    """Manager for video task queue with support for scheduled (future) tasks."""
 
     def __init__(
-        self, video_record_path: str, video_processed_path: str, max_workers: int = 2
+        self,
+        video_record_path: str,
+        video_processed_path: str,
+        max_workers: int = 2,
+        time_tolerance_seconds: int = 5,
     ) -> None:
         """Initialize the video process queue manager.
 
@@ -341,38 +346,111 @@ class VideoProcessQueueManager:
             video_record_path: Path to the directory containing recorded videos
             video_processed_path: Path to the directory where processed videos will be stored
             max_workers: Maximum number of concurrent video processing workers (default: 2)
+            time_tolerance_seconds: Additional seconds to wait after end_time before processing (default: 5)
         """
         self.max_workers = max_workers
         self.video_record_path = video_record_path
         self.video_processed_path = video_processed_path
+        self.time_tolerance_seconds = time_tolerance_seconds
         self._lock = threading.Lock()
         self._workers: Dict[UUID, VideoProcessWorker] = {}
         self._pending_tasks: list[VideoProcessTask] = []
 
+        # Tasks waiting for future end_time
+        self._scheduled_tasks: list[VideoProcessTask] = []
+        self._stop_scheduler = threading.Event()
+
+        self._scheduler_thread = threading.Thread(
+            target=self._scheduler_loop, name="VideoProcessScheduler", daemon=True
+        )
+        self._scheduler_thread.start()
+
     def add_task(self, task: VideoProcessTask) -> None:
-        """Add a task to the queue."""
-        with self._lock:
-            task.status = TaskStatus.pending
-            self._pending_tasks.append(task)
-            log.info(f"Added video processing task {task.id} to queue")
-            self._start_next_task()
+        """Add a task to the queue or schedule it if end_time is in the future.
+
+        Args:
+            task: The video processing task to add or schedule
+        """
+        try:
+            end_dt = datetime.strptime(task.end_time, "%Y-%m-%d %H:%M:%S")
+            now = datetime.now()
+
+            with self._lock:
+                if end_dt > now:
+                    # Schedule for future processing
+                    task.status = TaskStatus.pending
+                    self._scheduled_tasks.append(task)
+                    wait_seconds = (end_dt - now).total_seconds()
+                    log.info(
+                        f"Scheduled task {task.id} to start in {wait_seconds:.1f} seconds "
+                        f"(end_time: {task.end_time}, tolerance: {self.time_tolerance_seconds}s)"
+                    )
+                else:
+                    # Process immediately
+                    task.status = TaskStatus.pending
+                    self._pending_tasks.append(task)
+                    log.info(f"Added video processing task {task.id} to queue")
+                    self._start_next_task()
+
+        except ValueError as e:
+            log.err(f"Invalid end_time format for task {task.id}: {e}")
+            raise
+
+    def _scheduler_loop(self) -> None:
+        """Background thread that checks scheduled tasks and moves them to pending when ready."""
+        while not self._stop_scheduler.is_set():
+            try:
+                with self._lock:
+                    now = datetime.now()
+                    ready_tasks = []
+
+                    for task in list(self._scheduled_tasks):
+                        try:
+                            end_dt = datetime.strptime(
+                                task.end_time, "%Y-%m-%d %H:%M:%S"
+                            )
+                            scheduled_time = end_dt + timedelta(
+                                seconds=self.time_tolerance_seconds
+                            )
+
+                            if scheduled_time <= now:
+                                ready_tasks.append(task)
+                                self._scheduled_tasks.remove(task)
+                        except Exception as e:
+                            log.err(f"Error checking scheduled task {task.id}: {e}")
+                            self._scheduled_tasks.remove(task)
+
+                    for task in ready_tasks:
+                        self._pending_tasks.append(task)
+                        self._start_next_task()
+
+                self._stop_scheduler.wait(1)
+
+            except Exception as e:
+                log.err(f"Error in scheduler loop: {e}")
+                time.sleep(5)
 
     def get_task_status(self, task_id: UUID) -> Optional[VideoProcessTask]:
-        """Get the status of a task from in-memory state (active workers and pending tasks).
+        """Get the status of a task from in-memory state.
 
         Args:
             task_id: The UUID of the task to check
 
         Returns:
-            VideoProcessTask if found in active workers or pending tasks, None otherwise
+            VideoProcessTask if found, None otherwise
         """
         with self._lock:
-            # Check active workers first
+            # Check active workers
             if task_id in self._workers:
                 return self._workers[task_id].task
 
             # Check pending tasks
             for task in self._pending_tasks:
+                if task.id == task_id:
+                    return task
+
+            # Check scheduled tasks
+            for task in self._scheduled_tasks:
                 if task.id == task_id:
                     return task
 
@@ -407,28 +485,38 @@ class VideoProcessQueueManager:
             self._start_next_task()
 
     def remove_task(self, task_id: UUID) -> bool:
-        """Cancel and remove a task.
-
-        If the task is active, stop its worker. If pending, drop from queue.
-        Also remove the task record from the database.
+        """Cancel and remove a task from any queue (active, pending, or scheduled).
 
         Returns True if something was removed, False if not found.
         """
         removed = False
         with self._lock:
-            # If active, stop and remove worker
+            # Check active workers
             worker = self._workers.pop(task_id, None)
             if worker:
                 worker.stop()
                 removed = True
+                log.info(f"Stopped active worker for task {task_id}")
 
-            # If pending, remove from pending list
+            # Check pending tasks
             for i, t in enumerate(list(self._pending_tasks)):
                 if t.id == task_id:
                     self._pending_tasks.pop(i)
                     removed = True
+                    log.info(f"Removed pending task {task_id}")
                     break
-        self._start_next_task()
+
+            # Check scheduled tasks
+            for i, t in enumerate(list(self._scheduled_tasks)):
+                if t.id == task_id:
+                    self._scheduled_tasks.pop(i)
+                    removed = True
+                    log.info(f"Removed scheduled task {task_id}")
+                    break
+
+        if removed:
+            self._start_next_task()
+
         return removed
 
 

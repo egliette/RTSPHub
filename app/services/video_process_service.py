@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
 from uuid import UUID
 
@@ -74,30 +74,19 @@ class VideoProcessService:
         if start_dt >= end_dt:
             raise ValueError("Start time must be before end time")
 
-        # Ensure start time is earlier than the newest available video end time
-        # and end time is later than the oldest available video start time
-        video_info: List[tuple[datetime, str]] = []
+        # Ensure end time is later than the oldest available video start time
+        start_dt_list: List[datetime] = []
 
         for filename in video_files:
             try:
                 video_start_dt = self._parse_filename_to_datetime(filename)
-                video_info.append((video_start_dt, filename))
+                start_dt_list.append(video_start_dt)
             except Exception as e:
                 log.warn(f"Could not parse filename {filename}: {e}")
                 continue
 
-        if video_info:
-            newest_video_dt, newest_video_filename = max(video_info, key=lambda x: x[0])
-            video_path = os.path.join(video_folder, newest_video_filename)
-            video_duration = get_video_duration(video_path)
-            newest_video_end_dt = newest_video_dt + timedelta(seconds=video_duration)
-            if not (start_dt < newest_video_end_dt):
-                raise ValueError(
-                    f"Start time {start_dt} must be earlier than the newest available video end time: "
-                    f"{newest_video_end_dt.strftime('%Y-%m-%d %H:%M:%S')}"
-                )
-
-            oldest_video_dt = min(video_info, key=lambda x: x[0])[0]
+        if start_dt_list:
+            oldest_video_dt = min(start_dt_list, key=lambda x: x)
             if not (end_dt > oldest_video_dt):
                 raise ValueError(
                     f"End time {end_dt} must be later than the oldest available video: "
