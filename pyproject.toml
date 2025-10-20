@@ -3,26 +3,28 @@ requires = ["setuptools >= 61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = ""
+name = "RTSPHub"
 dynamic = ["version"]
-description = "n"
+description = "A FastAPI-based recording service that connects to RTSP streams, proxies them via mediamtx, and provides APIs to record and store videos locally or in MinIO."
 authors = [
-    {name = "", email = ""}
+    {name = "Egliette", email = "leminhtu74@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 dependencies = [
     "fastapi>=0.111",
-    "uvicorn[standard]==0.24.0",
+    "uvicorn[standard]>=0.24.0",
     "sqlalchemy==2.0.23",
-    "psycopg2-binary==2.9.9",
-    "pydantic==2.5.0",
-    "pydantic-settings==2.1.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
     "python-multipart==0.0.6",
     "python-dotenv==1.0.0",
     "minio==7.2.0",
     "alembic>=1.13.0",
+    "requests>=2.31.0",
+    "opencv-python-headless>=4.8.0",
+    "numpy>=1.26.0",
 ]
 
 [project.optional-dependencies]
@@ -35,7 +37,8 @@ test = [
 
 [tool.pytest.ini_options]
 markers = [
-    "model_dependent: marks tests as requiring external models (deselect with '-m \"not model_dependent\"')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
 ]
 
 [tool.setuptools]
