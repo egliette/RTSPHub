@@ -21,10 +21,11 @@ class TestIntegrationMinIOStorage:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.parametrize("video_duration", [30, 15, 5])
+    @pytest.mark.parametrize("custom_client", [{"MINIO_ENABLED": True}], indirect=True)
     def test_stream_recording_and_video_processing_multiple_durations_integration(
         self,
         video_duration: int,
-        client_with_minio_storage: TestClient,
+        custom_client: TestClient,
         make_add_stream_payload,
         make_video_process_request,
     ):
@@ -48,14 +49,10 @@ class TestIntegrationMinIOStorage:
         log.info(f"Using stream ID: {stream_id} with path: {stream_path}")
 
         # 0. Check if stream already exists and remove it if it does
-        existing_health = client_with_minio_storage.get(
-            f"/api/streams/{stream_id}/health"
-        )
+        existing_health = custom_client.get(f"/api/streams/{stream_id}/health")
         if existing_health.status_code == 200:
             log.info(f"Stream {stream_id} already exists, removing it first...")
-            delete_response = client_with_minio_storage.delete(
-                f"/api/streams/{stream_id}"
-            )
+            delete_response = custom_client.delete(f"/api/streams/{stream_id}")
             if delete_response.status_code == 204:
                 log.info(f"Successfully removed existing stream {stream_id}")
             else:
@@ -70,7 +67,7 @@ class TestIntegrationMinIOStorage:
             )
 
         # 1. Create and initialize stream
-        create_response = client_with_minio_storage.post(
+        create_response = custom_client.post(
             "/api/streams",
             json=make_add_stream_payload(
                 stream_id=stream_id,
@@ -90,9 +87,7 @@ class TestIntegrationMinIOStorage:
         is_running = False
 
         while time.time() - start_time < max_wait_time:
-            health_response = client_with_minio_storage.get(
-                f"/api/streams/{stream_id}/health"
-            )
+            health_response = custom_client.get(f"/api/streams/{stream_id}/health")
             if health_response.status_code == 200:
                 health_data = health_response.json()
                 state = health_data.get("state")
@@ -120,9 +115,7 @@ class TestIntegrationMinIOStorage:
             time.sleep(sleep_time)
             remaining_time -= sleep_time
 
-            health_response = client_with_minio_storage.get(
-                f"/api/streams/{stream_id}/health"
-            )
+            health_response = custom_client.get(f"/api/streams/{stream_id}/health")
             assert (
                 health_response.status_code == 200
             ), f"Stream health check failed: {health_response.text}"
@@ -161,7 +154,7 @@ class TestIntegrationMinIOStorage:
             end_time=end_time_str,
         )
 
-        process_response = client_with_minio_storage.post(
+        process_response = custom_client.post(
             "/api/video-process/tasks", json=request_data
         )
         assert (
@@ -177,9 +170,7 @@ class TestIntegrationMinIOStorage:
         final_result = None
 
         while time.time() < deadline:
-            status_response = client_with_minio_storage.get(
-                f"/api/video-process/tasks/{task_id}"
-            )
+            status_response = custom_client.get(f"/api/video-process/tasks/{task_id}")
             assert (
                 status_response.status_code == 200
             ), f"Failed to get task status: {status_response.text}"
@@ -232,25 +223,24 @@ class TestIntegrationMinIOStorage:
                     )
 
         # 8. Cleanup: Delete the processed video and stop the stream
-        delete_video_file(client_with_minio_storage, task_id)
+        delete_video_file(custom_client, task_id)
 
-        delete_response = client_with_minio_storage.delete(f"/api/streams/{stream_id}")
+        delete_response = custom_client.delete(f"/api/streams/{stream_id}")
         assert (
             delete_response.status_code == 204
         ), f"Failed to delete stream: {delete_response.text}"
 
-        health_response = client_with_minio_storage.get(
-            f"/api/streams/{stream_id}/health"
-        )
+        health_response = custom_client.get(f"/api/streams/{stream_id}/health")
         assert (
             health_response.status_code == 404
         ), "Stream should be deleted but still exists"
 
     @pytest.mark.integration
     @pytest.mark.slow
+    @pytest.mark.parametrize("custom_client", [{"MINIO_ENABLED": True}], indirect=True)
     def test_stream_recording_and_video_processing_integration(
         self,
-        client_with_minio_storage: TestClient,
+        custom_client: TestClient,
         make_add_stream_payload,
         make_video_process_request,
     ):
@@ -272,14 +262,10 @@ class TestIntegrationMinIOStorage:
         log.info(f"Using stream ID: {stream_id} with path: {stream_path}")
 
         # 0. Check if stream already exists and remove it if it does
-        existing_health = client_with_minio_storage.get(
-            f"/api/streams/{stream_id}/health"
-        )
+        existing_health = custom_client.get(f"/api/streams/{stream_id}/health")
         if existing_health.status_code == 200:
             log.info(f"Stream {stream_id} already exists, removing it first...")
-            delete_response = client_with_minio_storage.delete(
-                f"/api/streams/{stream_id}"
-            )
+            delete_response = custom_client.delete(f"/api/streams/{stream_id}")
             if delete_response.status_code == 204:
                 log.info(f"Successfully removed existing stream {stream_id}")
             else:
@@ -294,7 +280,7 @@ class TestIntegrationMinIOStorage:
             )
 
         # 1. Create and initialize stream
-        create_response = client_with_minio_storage.post(
+        create_response = custom_client.post(
             "/api/streams",
             json=make_add_stream_payload(
                 stream_id=stream_id,
@@ -314,9 +300,7 @@ class TestIntegrationMinIOStorage:
         is_running = False
 
         while time.time() - start_time < max_wait_time:
-            health_response = client_with_minio_storage.get(
-                f"/api/streams/{stream_id}/health"
-            )
+            health_response = custom_client.get(f"/api/streams/{stream_id}/health")
             if health_response.status_code == 200:
                 health_data = health_response.json()
                 state = health_data.get("state")
@@ -344,9 +328,7 @@ class TestIntegrationMinIOStorage:
             time.sleep(sleep_time)
             remaining_time -= sleep_time
 
-            health_response = client_with_minio_storage.get(
-                f"/api/streams/{stream_id}/health"
-            )
+            health_response = custom_client.get(f"/api/streams/{stream_id}/health")
             assert (
                 health_response.status_code == 200
             ), f"Stream health check failed: {health_response.text}"
@@ -387,7 +369,7 @@ class TestIntegrationMinIOStorage:
             end_time=end_time_str,
         )
 
-        process_response = client_with_minio_storage.post(
+        process_response = custom_client.post(
             "/api/video-process/tasks", json=request_data
         )
         assert (
@@ -403,9 +385,7 @@ class TestIntegrationMinIOStorage:
         final_result = None
 
         while time.time() < deadline:
-            status_response = client_with_minio_storage.get(
-                f"/api/video-process/tasks/{task_id}"
-            )
+            status_response = custom_client.get(f"/api/video-process/tasks/{task_id}")
             assert (
                 status_response.status_code == 200
             ), f"Failed to get task status: {status_response.text}"
@@ -458,25 +438,24 @@ class TestIntegrationMinIOStorage:
                     )
 
         # 8. Cleanup: Delete the processed video and stop the stream
-        delete_video_file(client_with_minio_storage, task_id)
+        delete_video_file(custom_client, task_id)
 
-        delete_response = client_with_minio_storage.delete(f"/api/streams/{stream_id}")
+        delete_response = custom_client.delete(f"/api/streams/{stream_id}")
         assert (
             delete_response.status_code == 204
         ), f"Failed to delete stream: {delete_response.text}"
 
-        health_response = client_with_minio_storage.get(
-            f"/api/streams/{stream_id}/health"
-        )
+        health_response = custom_client.get(f"/api/streams/{stream_id}/health")
         assert (
             health_response.status_code == 404
         ), "Stream should be deleted but still exists"
 
     @pytest.mark.integration
     @pytest.mark.slow
+    @pytest.mark.parametrize("custom_client", [{"MINIO_ENABLED": True}], indirect=True)
     def test_stream_recording_and_future_video_processing_integration(
         self,
-        client_with_minio_storage: TestClient,
+        custom_client: TestClient,
         make_add_stream_payload,
         make_video_process_request,
     ):
@@ -497,14 +476,10 @@ class TestIntegrationMinIOStorage:
         log.info(f"Using stream ID: {stream_id} with path: {stream_path}")
 
         # 0. Check if stream already exists and remove it if it does
-        existing_health = client_with_minio_storage.get(
-            f"/api/streams/{stream_id}/health"
-        )
+        existing_health = custom_client.get(f"/api/streams/{stream_id}/health")
         if existing_health.status_code == 200:
             log.info(f"Stream {stream_id} already exists, removing it first...")
-            delete_response = client_with_minio_storage.delete(
-                f"/api/streams/{stream_id}"
-            )
+            delete_response = custom_client.delete(f"/api/streams/{stream_id}")
             if delete_response.status_code == 204:
                 log.info(f"Successfully removed existing stream {stream_id}")
             else:
@@ -519,7 +494,7 @@ class TestIntegrationMinIOStorage:
             )
 
         # 1. Create and initialize stream
-        create_response = client_with_minio_storage.post(
+        create_response = custom_client.post(
             "/api/streams",
             json=make_add_stream_payload(
                 stream_id=stream_id,
@@ -539,9 +514,7 @@ class TestIntegrationMinIOStorage:
         is_running = False
 
         while time.time() - start_time < max_wait_time:
-            health_response = client_with_minio_storage.get(
-                f"/api/streams/{stream_id}/health"
-            )
+            health_response = custom_client.get(f"/api/streams/{stream_id}/health")
             if health_response.status_code == 200:
                 health_data = health_response.json()
                 state = health_data.get("state")
@@ -569,9 +542,7 @@ class TestIntegrationMinIOStorage:
             time.sleep(sleep_time)
             remaining_time -= sleep_time
 
-            health_response = client_with_minio_storage.get(
-                f"/api/streams/{stream_id}/health"
-            )
+            health_response = custom_client.get(f"/api/streams/{stream_id}/health")
             assert (
                 health_response.status_code == 200
             ), f"Stream health check failed: {health_response.text}"
@@ -615,7 +586,7 @@ class TestIntegrationMinIOStorage:
             end_time=end_time_str,
         )
 
-        process_response = client_with_minio_storage.post(
+        process_response = custom_client.post(
             "/api/video-process/tasks", json=request_data
         )
         assert (
@@ -626,9 +597,7 @@ class TestIntegrationMinIOStorage:
         log.info(f"Created video processing task with future end time: {task_id}")
 
         # 6. Verify task is initially in pending/scheduled state
-        status_response = client_with_minio_storage.get(
-            f"/api/video-process/tasks/{task_id}"
-        )
+        status_response = custom_client.get(f"/api/video-process/tasks/{task_id}")
         assert (
             status_response.status_code == 200
         ), f"Failed to get task status: {status_response.text}"
@@ -653,9 +622,7 @@ class TestIntegrationMinIOStorage:
             remaining_scheduled_time -= sleep_time
 
             # Check stream health during wait
-            health_response = client_with_minio_storage.get(
-                f"/api/streams/{stream_id}/health"
-            )
+            health_response = custom_client.get(f"/api/streams/{stream_id}/health")
             assert (
                 health_response.status_code == 200
             ), f"Stream health check failed: {health_response.text}"
@@ -667,9 +634,7 @@ class TestIntegrationMinIOStorage:
             ), f"Stream is not running. State: {stream_state}"
 
             # Check task status
-            status_response = client_with_minio_storage.get(
-                f"/api/video-process/tasks/{task_id}"
-            )
+            status_response = custom_client.get(f"/api/video-process/tasks/{task_id}")
             if status_response.status_code == 200:
                 task_data = status_response.json()
                 current_status = task_data.get("status")
@@ -685,9 +650,7 @@ class TestIntegrationMinIOStorage:
 
         log.info(f"Polling for task completion (max {max_processing_time}s)...")
         while time.time() < deadline:
-            status_response = client_with_minio_storage.get(
-                f"/api/video-process/tasks/{task_id}"
-            )
+            status_response = custom_client.get(f"/api/video-process/tasks/{task_id}")
             assert (
                 status_response.status_code == 200
             ), f"Failed to get task status: {status_response.text}"
@@ -741,16 +704,14 @@ class TestIntegrationMinIOStorage:
                     )
 
         # 10. Cleanup: Delete the processed video and stop the stream
-        delete_video_file(client_with_minio_storage, task_id)
+        delete_video_file(custom_client, task_id)
 
-        delete_response = client_with_minio_storage.delete(f"/api/streams/{stream_id}")
+        delete_response = custom_client.delete(f"/api/streams/{stream_id}")
         assert (
             delete_response.status_code == 204
         ), f"Failed to delete stream: {delete_response.text}"
 
-        health_response = client_with_minio_storage.get(
-            f"/api/streams/{stream_id}/health"
-        )
+        health_response = custom_client.get(f"/api/streams/{stream_id}/health")
         assert (
             health_response.status_code == 404
         ), "Stream should be deleted but still exists"

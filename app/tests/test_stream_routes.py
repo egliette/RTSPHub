@@ -1,5 +1,6 @@
 import time
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.config.settings import settings
@@ -169,8 +170,11 @@ def test_proxy_rtsp_from_rtsp_source(client: TestClient, make_add_stream_payload
     assert src_id not in final_ids and proxy_id not in final_ids
 
 
+@pytest.mark.parametrize(
+    "custom_client", [{"USE_TEST_RECORD_PATH": True}], indirect=True
+)
 def test_video_process_end_time_before_oldest_video(
-    client: TestClient, make_video_process_request, setup_test_videos
+    custom_client: TestClient, make_video_process_request, setup_test_videos
 ):
     """Test video processing task creation with end time before oldest available video."""
     from datetime import timedelta
@@ -185,7 +189,7 @@ def test_video_process_end_time_before_oldest_video(
 
     request_data = make_video_process_request(start_time=start_str, end_time=end_str)
 
-    response = client.post("/api/video-process/tasks", json=request_data)
+    response = custom_client.post("/api/video-process/tasks", json=request_data)
 
     assert (
         response.status_code == 400

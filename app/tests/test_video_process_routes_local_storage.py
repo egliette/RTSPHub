@@ -14,9 +14,14 @@ class TestVideoProcessRoutesWithLocalStorage:
     """Test cases for video processing API routes with local storage (MINIO_ENABLED = False)."""
 
     @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "custom_client",
+        [{"MINIO_ENABLED": False, "USE_TEST_RECORD_PATH": True}],
+        indirect=True,
+    )
     def test_video_task_exactly_one_video(
         self,
-        client_with_local_storage: TestClient,
+        custom_client: TestClient,
         make_video_process_request,
         setup_test_videos,
     ):
@@ -31,7 +36,7 @@ class TestVideoProcessRoutesWithLocalStorage:
             start_time=start_str, end_time=end_str
         )
 
-        create_response = client_with_local_storage.post(
+        create_response = custom_client.post(
             "/api/video-process/tasks", json=request_data
         )
         assert (
@@ -42,7 +47,7 @@ class TestVideoProcessRoutesWithLocalStorage:
         deadline = time.time() + 30
         final = None
         while time.time() < deadline:
-            resp = client_with_local_storage.get(f"/api/video-process/tasks/{task_id}")
+            resp = custom_client.get(f"/api/video-process/tasks/{task_id}")
             assert resp.status_code == 200
             data = resp.json()
             if data["status"] in [TaskStatus.completed.value, TaskStatus.error.value]:
@@ -60,12 +65,17 @@ class TestVideoProcessRoutesWithLocalStorage:
         requested_seconds = (end_dt - start_dt).total_seconds()
         assert abs(result_duration - requested_seconds) <= 5.0
 
-        delete_video_file(client_with_local_storage, task_id, output_path)
+        delete_video_file(custom_client, task_id, output_path)
 
     @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "custom_client",
+        [{"MINIO_ENABLED": False, "USE_TEST_RECORD_PATH": True}],
+        indirect=True,
+    )
     def test_video_task_edge_case_left_overlap(
         self,
-        client_with_local_storage: TestClient,
+        custom_client: TestClient,
         make_video_process_request,
         setup_test_videos,
     ):
@@ -81,7 +91,7 @@ class TestVideoProcessRoutesWithLocalStorage:
             start_time=start_str, end_time=end_str
         )
 
-        create_response = client_with_local_storage.post(
+        create_response = custom_client.post(
             "/api/video-process/tasks", json=request_data
         )
         assert (
@@ -92,7 +102,7 @@ class TestVideoProcessRoutesWithLocalStorage:
         deadline = time.time() + 30
         final = None
         while time.time() < deadline:
-            resp = client_with_local_storage.get(f"/api/video-process/tasks/{task_id}")
+            resp = custom_client.get(f"/api/video-process/tasks/{task_id}")
             assert resp.status_code == 200
             data = resp.json()
             if data["status"] in [TaskStatus.completed.value, TaskStatus.error.value]:
@@ -114,12 +124,17 @@ class TestVideoProcessRoutesWithLocalStorage:
         ).total_seconds()  # From first video to end time
         assert abs(result_duration - expected_seconds) <= 5.0
 
-        delete_video_file(client_with_local_storage, task_id, output_path)
+        delete_video_file(custom_client, task_id, output_path)
 
     @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "custom_client",
+        [{"MINIO_ENABLED": False, "USE_TEST_RECORD_PATH": True}],
+        indirect=True,
+    )
     def test_video_task_exactly_two_videos(
         self,
-        client_with_local_storage: TestClient,
+        custom_client: TestClient,
         make_video_process_request,
         setup_test_videos,
     ):
@@ -134,7 +149,7 @@ class TestVideoProcessRoutesWithLocalStorage:
             start_time=start_str, end_time=end_str
         )
 
-        create_response = client_with_local_storage.post(
+        create_response = custom_client.post(
             "/api/video-process/tasks", json=request_data
         )
         assert (
@@ -146,7 +161,7 @@ class TestVideoProcessRoutesWithLocalStorage:
         deadline = time.time() + 30
         final = None
         while time.time() < deadline:
-            resp = client_with_local_storage.get(f"/api/video-process/tasks/{task_id}")
+            resp = custom_client.get(f"/api/video-process/tasks/{task_id}")
             assert resp.status_code == 200
             data = resp.json()
             if data["status"] in [TaskStatus.completed.value, TaskStatus.error.value]:
@@ -164,12 +179,17 @@ class TestVideoProcessRoutesWithLocalStorage:
         requested_seconds = (end_dt - start_dt).total_seconds()
         assert abs(result_duration - requested_seconds) <= 5.0
 
-        delete_video_file(client_with_local_storage, task_id, output_path)
+        delete_video_file(custom_client, task_id, output_path)
 
     @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "custom_client",
+        [{"MINIO_ENABLED": False, "USE_TEST_RECORD_PATH": True}],
+        indirect=True,
+    )
     def test_video_task_exactly_three_videos(
         self,
-        client_with_local_storage: TestClient,
+        custom_client: TestClient,
         make_video_process_request,
         setup_test_videos,
     ):
@@ -185,7 +205,7 @@ class TestVideoProcessRoutesWithLocalStorage:
             start_time=start_str, end_time=end_str
         )
 
-        create_response = client_with_local_storage.post(
+        create_response = custom_client.post(
             "/api/video-process/tasks", json=request_data
         )
         assert (
@@ -197,7 +217,7 @@ class TestVideoProcessRoutesWithLocalStorage:
         deadline = time.time() + 30
         final = None
         while time.time() < deadline:
-            resp = client_with_local_storage.get(f"/api/video-process/tasks/{task_id}")
+            resp = custom_client.get(f"/api/video-process/tasks/{task_id}")
             assert resp.status_code == 200
             data = resp.json()
             if data["status"] in [TaskStatus.completed.value, TaskStatus.error.value]:
@@ -215,12 +235,17 @@ class TestVideoProcessRoutesWithLocalStorage:
         requested_seconds = (end_dt - start_dt).total_seconds()
         assert abs(result_duration - requested_seconds) <= 5.0
 
-        delete_video_file(client_with_local_storage, task_id, output_path)
+        delete_video_file(custom_client, task_id, output_path)
 
     @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "custom_client",
+        [{"MINIO_ENABLED": False, "USE_TEST_RECORD_PATH": True}],
+        indirect=True,
+    )
     def test_video_task_three_concurrent_requests_single_video(
         self,
-        client_with_local_storage: TestClient,
+        custom_client: TestClient,
         make_video_process_request,
         setup_test_videos,
     ):
@@ -244,9 +269,7 @@ class TestVideoProcessRoutesWithLocalStorage:
             for start_dt, end_dt in time_ranges
         ]
         create_responses = [
-            client_with_local_storage.post(
-                "/api/video-process/tasks", json=request_data
-            )
+            custom_client.post("/api/video-process/tasks", json=request_data)
             for request_data in request_data_list
         ]
 
@@ -266,9 +289,7 @@ class TestVideoProcessRoutesWithLocalStorage:
             for task_id in task_ids:
                 if task_id in results:
                     continue
-                resp = client_with_local_storage.get(
-                    f"/api/video-process/tasks/{task_id}"
-                )
+                resp = custom_client.get(f"/api/video-process/tasks/{task_id}")
                 assert resp.status_code == 200
                 data = resp.json()
                 if data["status"] in [
@@ -300,4 +321,4 @@ class TestVideoProcessRoutesWithLocalStorage:
                 abs(result_duration - requested_seconds) <= 5.0
             ), f"Task {i+1} duration mismatch: expected ~{requested_seconds}s, got {result_duration}s"
 
-            delete_video_file(client_with_local_storage, task_id, output_path)
+            delete_video_file(custom_client, task_id, output_path)
