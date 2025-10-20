@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class VideoProcessRequest(BaseModel):
@@ -15,9 +15,24 @@ class VideoProcessRequest(BaseModel):
     start_time: str = Field(
         description="Start time in format: 'YYYY-MM-DD HH:MM:SS' (e.g., '2025-10-02 16:39:00')"
     )
-    end_time: str = Field(
-        description="End time in format: 'YYYY-MM-DD HH:MM:SS' (e.g., '2025-10-02 16:41:30')"
+    end_time: Optional[str] = Field(
+        default=None,
+        description="End time in format: 'YYYY-MM-DD HH:MM:SS' (e.g., '2025-10-02 16:41:30'). Required if duration is not provided.",
     )
+    duration_seconds: Optional[int] = Field(
+        default=None,
+        description="Duration in seconds (e.g., 150 for 2.5 minutes). Required if end_time is not provided.",
+        gt=0,
+    )
+
+    @model_validator(mode="after")
+    def validate_time_params(self) -> "VideoProcessRequest":
+        """Validate that either end_time or duration_seconds is provided, but not both."""
+        if self.end_time is None and self.duration_seconds is None:
+            raise ValueError("Either end_time or duration_seconds must be provided")
+        if self.end_time is not None and self.duration_seconds is not None:
+            raise ValueError("Cannot provide both end_time and duration_seconds")
+        return self
 
 
 class TaskStatus(str, Enum):

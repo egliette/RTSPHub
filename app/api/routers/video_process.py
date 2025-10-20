@@ -39,13 +39,19 @@ def _get_video_uri(task: VideoProcessTask) -> str:
 async def create_video_task(request: VideoProcessRequest):
     """Create a new video processing task (trim/merge)."""
     try:
-        video_service.validate_request(
-            request.source_rtsp_path, request.start_time, request.end_time
-        )
+        start_time = request.start_time
+        end_time = request.end_time
 
-        task = video_service.create_task(
-            request.source_rtsp_path, request.start_time, request.end_time
-        )
+        if request.duration_seconds is not None:
+            from datetime import datetime, timedelta
+
+            start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            end_dt = start_dt + timedelta(seconds=request.duration_seconds)
+            end_time = end_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        video_service.validate_request(request.source_rtsp_path, start_time, end_time)
+
+        task = video_service.create_task(request.source_rtsp_path, start_time, end_time)
         return VideoProcessResponse(
             task_id=task.id,
             status=TaskStatus(task.status.value),

@@ -30,6 +30,32 @@ class TestVideoProcessRoutes:
         task_id = UUID(data["task_id"])
         assert isinstance(task_id, UUID)
 
+    def test_create_video_task_success_with_duration(
+        self, client: TestClient, make_video_process_request
+    ):
+        """Test successful video task creation with duration."""
+        request_data = make_video_process_request(
+            start_time="2025-01-15 10:30:00",
+            duration_seconds=120,  # 2 minutes
+            end_time=None,  # Explicitly set to None to test duration
+        )
+
+        response = client.post("/api/video-process/tasks", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Validate response structure
+        assert "task_id" in data
+        assert "status" in data
+        assert "message" in data
+        assert "created_at" in data
+        assert "updated_at" in data
+
+        # Validate task_id is a valid UUID
+        task_id = UUID(data["task_id"])
+        assert isinstance(task_id, UUID)
+
     def test_create_video_task_invalid_time_format(
         self, client: TestClient, make_video_process_request
     ):
@@ -56,6 +82,57 @@ class TestVideoProcessRoutes:
         response = client.post("/api/video-process/tasks", json=request_data)
 
         assert response.status_code == 400
+        data = response.json()
+        assert "detail" in data
+
+    def test_create_video_task_both_end_time_and_duration(
+        self, client: TestClient, make_video_process_request
+    ):
+        """Test video task creation with both end_time and duration provided (should fail)."""
+        request_data = make_video_process_request(
+            start_time="2025-01-15 10:30:00",
+            end_time="2025-01-15 10:32:00",
+            duration_seconds=120,
+        )
+
+        response = client.post("/api/video-process/tasks", json=request_data)
+
+        assert response.status_code == 422  # Validation error
+        data = response.json()
+        assert "detail" in data
+
+    def test_create_video_task_neither_end_time_nor_duration(
+        self, client: TestClient, make_video_process_request
+    ):
+        """Test video task creation with neither end_time nor duration provided (should fail)."""
+        request_data = make_video_process_request(
+            start_time="2025-01-15 10:30:00", end_time=None, duration_seconds=None
+        )
+
+        response = client.post("/api/video-process/tasks", json=request_data)
+
+        assert response.status_code == 422  # Validation error
+        data = response.json()
+        assert "detail" in data
+        # Check that the error message mentions the validation issue
+        assert any(
+            "Either end_time or duration_seconds must be provided" in str(error)
+            for error in data["detail"]
+        )
+
+    def test_create_video_task_invalid_duration(
+        self, client: TestClient, make_video_process_request
+    ):
+        """Test video task creation with invalid duration (zero or negative)."""
+        request_data = make_video_process_request(
+            start_time="2025-01-15 10:30:00",
+            duration_seconds=0,  # Invalid duration
+            end_time=None,
+        )
+
+        response = client.post("/api/video-process/tasks", json=request_data)
+
+        assert response.status_code == 422  # Validation error
         data = response.json()
         assert "detail" in data
 
