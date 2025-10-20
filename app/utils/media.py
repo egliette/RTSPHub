@@ -1,5 +1,7 @@
 import subprocess
 
+from app.utils.logger import log
+
 
 def get_video_duration(path: str) -> float:
     """Return media duration in seconds using ffprobe.
@@ -19,7 +21,9 @@ def get_video_duration(path: str) -> float:
     result = subprocess.run(cmd, capture_output=True, text=True)
     stdout = result.stdout.strip()
     if result.returncode != 0 or not stdout:
-        (result.stderr or "").strip()
+        stderr = (result.stderr or "").strip()
+        if stderr:
+            log.err(f"FFprobe error for {path}: {stderr}")
         raise subprocess.CalledProcessError(
             result.returncode, cmd, result.stdout, result.stderr
         )

@@ -289,6 +289,9 @@ class VideoProcessWorker:
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
+            stderr = (result.stderr or "").strip()
+            if stderr:
+                log.err(f"FFmpeg trim error for {video_info.path}: {stderr}")
             raise subprocess.CalledProcessError(
                 result.returncode, cmd, result.stdout, result.stderr
             )
@@ -322,6 +325,11 @@ class VideoProcessWorker:
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
+            stderr = (result.stderr or "").strip()
+            if stderr:
+                log.err(
+                    f"FFmpeg concatenation error for {len(video_list)} videos: {stderr}"
+                )
             os.remove(concat_file)
             raise subprocess.CalledProcessError(
                 result.returncode, cmd, result.stdout, result.stderr
@@ -518,9 +526,3 @@ class VideoProcessQueueManager:
             self._start_next_task()
 
         return removed
-
-
-queue_manager = VideoProcessQueueManager(
-    video_record_path=settings.VIDEO_RECORD_PATH,
-    video_processed_path=settings.VIDEO_PROCESSED_PATH,
-)
