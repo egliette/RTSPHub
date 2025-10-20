@@ -231,10 +231,9 @@ curl -X DELETE "http://localhost:8000/api/streams/camera1"
 
 ## 6. TODO
 
-- [x] Handle edge case where the requested time range is currently being recorded
-- [x] Handle edge case where the requested time range overlaps on the left with existing recorded videos (start_time < oldest_video_start_time < end_time)
-- [x] Allow recording in the future (end time in the future)
-- [x] Add route to request from time + duration
-- [ ] Update logger to use standard methods
-- [ ] Update to async implementation
-- [ ] Auto generate documentation
+- [ ] Auto generated documentation
+- [ ] Add stress test
+- [ ] Add perfomance test
+- [ ] Add Fallback mechanism for crashed cameras
+- [ ] Check number of workers and ffmpeg workers, CPU percentages usage
+- [ ] Add Hardware requirements
