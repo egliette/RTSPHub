@@ -82,7 +82,7 @@ class VideoProcessService:
                 video_start_dt = self._parse_filename_to_datetime(filename)
                 start_dt_list.append(video_start_dt)
             except Exception as e:
-                log.warn(f"Could not parse filename {filename}: {e}")
+                log.warning(f"Could not parse filename {filename}: {e}")
                 continue
 
         if start_dt_list:
@@ -139,7 +139,7 @@ class VideoProcessService:
             db_removed = self.dao.delete(task_id)
             return queue_removed or db_removed
         except Exception as e:
-            log.err(f"Failed to delete task {task_id} from database: {e}")
+            log.error(f"Failed to delete task {task_id} from database: {e}")
             return queue_removed
 
     def delete_video_file(self, task_id: str) -> bool:
@@ -169,7 +169,7 @@ class VideoProcessService:
                     log.info(f"Deleted video file from MinIO: {video_path}")
                 return success
             except Exception as e:
-                log.err(f"Failed to delete video file from MinIO: {e}")
+                log.error(f"Failed to delete video file from MinIO: {e}")
                 return False
         else:
             try:
@@ -178,10 +178,10 @@ class VideoProcessService:
                     log.info(f"Deleted video file from local filesystem: {video_path}")
                     return True
                 else:
-                    log.warn(f"Video file not found: {video_path}")
+                    log.warning(f"Video file not found: {video_path}")
                     return False
             except Exception as e:
-                log.err(f"Failed to delete video file from local filesystem: {e}")
+                log.error(f"Failed to delete video file from local filesystem: {e}")
                 return False
 
 

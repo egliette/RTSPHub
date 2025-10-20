@@ -46,8 +46,8 @@ jobs:
           target: production
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.latest.outputs.tag }}
-            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository_owner }}/rtsphub:${{ steps.latest.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/rtsphub:latest
           build-args: |
             VERSION=${{ steps.latest.outputs.tag }}
             APP_UID=1000

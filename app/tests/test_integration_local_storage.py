@@ -54,13 +54,13 @@ class TestIntegrationLocalStorage:
             if delete_response.status_code == 204:
                 log.info(f"Successfully removed existing stream {stream_id}")
             else:
-                log.warn(
+                log.warning(
                     f"Failed to remove existing stream {stream_id}: {delete_response.text}"
                 )
         elif existing_health.status_code == 404:
             log.info(f"Stream {stream_id} does not exist, proceeding with creation")
         else:
-            log.warn(
+            log.warning(
                 f"Unexpected response when checking existing stream: {existing_health.status_code}"
             )
 
@@ -255,13 +255,13 @@ class TestIntegrationLocalStorage:
             if delete_response.status_code == 204:
                 log.info(f"Successfully removed existing stream {stream_id}")
             else:
-                log.warn(
+                log.warning(
                     f"Failed to remove existing stream {stream_id}: {delete_response.text}"
                 )
         elif existing_health.status_code == 404:
             log.info(f"Stream {stream_id} does not exist, proceeding with creation")
         else:
-            log.warn(
+            log.warning(
                 f"Unexpected response when checking existing stream: {existing_health.status_code}"
             )
 
@@ -457,13 +457,13 @@ class TestIntegrationLocalStorage:
             if delete_response.status_code == 204:
                 log.info(f"Successfully removed existing stream {stream_id}")
             else:
-                log.warn(
+                log.warning(
                     f"Failed to remove existing stream {stream_id}: {delete_response.text}"
                 )
         elif existing_health.status_code == 404:
             log.info(f"Stream {stream_id} does not exist, proceeding with creation")
         else:
-            log.warn(
+            log.warning(
                 f"Unexpected response when checking existing stream: {existing_health.status_code}"
             )
 

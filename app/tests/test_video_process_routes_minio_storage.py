@@ -78,7 +78,7 @@ class TestVideoProcessRoutesWithMinIOStorage:
                     if os.path.exists(temp_file.name):
                         os.remove(temp_file.name)
                 except Exception as e:
-                    log.warn(
+                    log.warning(
                         f"Failed to cleanup temporary video file {temp_file.name}: {e}"
                     )
 
@@ -151,7 +151,7 @@ class TestVideoProcessRoutesWithMinIOStorage:
                     if os.path.exists(temp_file.name):
                         os.remove(temp_file.name)
                 except Exception as e:
-                    log.warn(
+                    log.warning(
                         f"Failed to cleanup temporary video file {temp_file.name}: {e}"
                     )
 
@@ -220,7 +220,7 @@ class TestVideoProcessRoutesWithMinIOStorage:
                     if os.path.exists(temp_file.name):
                         os.remove(temp_file.name)
                 except Exception as e:
-                    log.warn(
+                    log.warning(
                         f"Failed to cleanup temporary video file {temp_file.name}: {e}"
                     )
 
@@ -290,7 +290,7 @@ class TestVideoProcessRoutesWithMinIOStorage:
                     if os.path.exists(temp_file.name):
                         os.remove(temp_file.name)
                 except Exception as e:
-                    log.warn(
+                    log.warning(
                         f"Failed to cleanup temporary video file {temp_file.name}: {e}"
                     )
 
@@ -390,7 +390,7 @@ class TestVideoProcessRoutesWithMinIOStorage:
                         if os.path.exists(temp_file.name):
                             os.remove(temp_file.name)
                     except Exception as e:
-                        log.warn(
+                        log.warning(
                             f"Failed to cleanup temporary video file {temp_file.name}: {e}"
                         )
 

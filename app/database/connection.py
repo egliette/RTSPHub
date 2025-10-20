@@ -10,7 +10,7 @@ try:
     )
     log.info(f"Database engine created successfully")
 except Exception as e:
-    log.err(f"Failed to create database engine: {e}")
+    log.error(f"Failed to create database engine: {e}")
     raise
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -25,7 +25,7 @@ def get_db():
     try:
         yield db
     except Exception as e:
-        log.err(f"Database session error: {e}")
+        log.error(f"Database session error: {e}")
         db.rollback()
         raise
     finally:

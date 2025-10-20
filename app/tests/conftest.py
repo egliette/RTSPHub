@@ -110,7 +110,7 @@ def setup_test_videos(source_uri: str, test_video_record_path: str) -> Iterator[
     try:
         shutil.rmtree(test_cam_path)
     except Exception as e:
-        log.warn(f"Failed to cleanup test videos directory {test_cam_path}: {e}")
+        log.warning(f"Failed to cleanup test videos directory {test_cam_path}: {e}")
 
 
 @pytest.fixture()
