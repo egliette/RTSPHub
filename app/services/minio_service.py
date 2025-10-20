@@ -71,10 +71,10 @@ class MinIOService:
             else:
                 log.info(f"MinIO bucket already exists: {self.bucket_name}")
         except S3Error as e:
-            log.err(f"Failed to create/check MinIO bucket: {e}")
+            log.error(f"Failed to create/check MinIO bucket: {e}")
             raise
         except Exception as e:
-            log.err(f"Unexpected error connecting to MinIO: {e}")
+            log.error(f"Unexpected error connecting to MinIO: {e}")
             raise
 
     def upload_video(self, local_file_path: str, object_name: str) -> str:
@@ -94,10 +94,10 @@ class MinIOService:
             return object_name
 
         except S3Error as e:
-            log.err(f"Failed to upload video to MinIO: {e}")
+            log.error(f"Failed to upload video to MinIO: {e}")
             raise
         except Exception as e:
-            log.err(f"Unexpected error uploading video: {e}")
+            log.error(f"Unexpected error uploading video: {e}")
             raise
 
     def generate_presigned_url(
@@ -114,10 +114,10 @@ class MinIOService:
             return url
 
         except S3Error as e:
-            log.err(f"Failed to generate presigned URL: {e}")
+            log.error(f"Failed to generate presigned URL: {e}")
             raise
         except Exception as e:
-            log.err(f"Unexpected error generating presigned URL: {e}")
+            log.error(f"Unexpected error generating presigned URL: {e}")
             raise
 
     def delete_video(self, object_name: str) -> bool:
@@ -128,10 +128,10 @@ class MinIOService:
             return True
 
         except S3Error as e:
-            log.err(f"Failed to delete video from MinIO: {e}")
+            log.error(f"Failed to delete video from MinIO: {e}")
             return False
         except Exception as e:
-            log.err(f"Unexpected error deleting video: {e}")
+            log.error(f"Unexpected error deleting video: {e}")
             return False
 
     def video_exists(self, object_name: str) -> bool:
@@ -142,7 +142,7 @@ class MinIOService:
         except S3Error:
             return False
         except Exception as e:
-            log.err(f"Unexpected error checking video existence: {e}")
+            log.error(f"Unexpected error checking video existence: {e}")
             return False
 
     def get_video_info(self, object_name: str) -> Optional[dict]:
@@ -156,10 +156,10 @@ class MinIOService:
                 "etag": stat.etag,
             }
         except S3Error as e:
-            log.err(f"Failed to get video info: {e}")
+            log.error(f"Failed to get video info: {e}")
             return None
         except Exception as e:
-            log.err(f"Unexpected error getting video info: {e}")
+            log.error(f"Unexpected error getting video info: {e}")
             return None
 
     def generate_object_name(

@@ -23,7 +23,7 @@ def get_video_duration(path: str) -> float:
     if result.returncode != 0 or not stdout:
         stderr = (result.stderr or "").strip()
         if stderr:
-            log.err(f"FFprobe error for {path}: {stderr}")
+            log.error(f"FFprobe error for {path}: {stderr}")
         raise subprocess.CalledProcessError(
             result.returncode, cmd, result.stdout, result.stderr
         )

@@ -177,15 +177,15 @@ class AppLogger:
         except Exception:
             pass
 
-    def crit(self, msg: str, exc_info: bool = False) -> None:
+    def critical(self, msg: str, exc_info: bool = False) -> None:
         """Log critical message."""
         return self.logger.critical(msg=msg, exc_info=exc_info)
 
-    def bug(self, msg: str, exc_info: bool = False) -> None:
+    def debug(self, msg: str, exc_info: bool = False) -> None:
         """Log debug message."""
         return self.logger.debug(msg=msg, exc_info=exc_info)
 
-    def err(self, msg: str, exc_info: bool = False) -> None:
+    def error(self, msg: str, exc_info: bool = False) -> None:
         """Log error message."""
         return self.logger.error(msg=msg, exc_info=exc_info)
 
@@ -193,7 +193,7 @@ class AppLogger:
         """Log info message."""
         return self.logger.info(msg=msg, exc_info=exc_info)
 
-    def warn(self, msg: str, exc_info: bool = False) -> None:
+    def warning(self, msg: str, exc_info: bool = False) -> None:
         """Log warning message."""
         return self.logger.warning(msg=msg, exc_info=exc_info)
 

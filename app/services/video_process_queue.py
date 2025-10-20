@@ -92,7 +92,7 @@ class VideoProcessWorker:
             # Find videos that overlap with the requested time range
             relevant_videos = self._find_relevant_videos(video_folder, start_dt, end_dt)
             if not relevant_videos:
-                log.warn(f"No videos found in time range for task {self.task_id}")
+                log.warning(f"No videos found in time range for task {self.task_id}")
                 self.task.status = TaskStatus.error
                 self.task.message = "No videos found in the specified time range"
                 self.dao.update_status(
@@ -147,7 +147,7 @@ class VideoProcessWorker:
                 result_video_path=self.task.result_video_path,
             )
         except Exception as e:
-            log.err(f"Task {self.task_id} failed: {str(e)}")
+            log.error(f"Task {self.task_id} failed: {str(e)}")
             self.task.status = TaskStatus.error
             self.task.message = f"Error processing task: {str(e)}"
             self.dao.update_status(
@@ -157,7 +157,9 @@ class VideoProcessWorker:
             try:
                 self.cleanup_task()
             except Exception as e:
-                log.warn(f"Error in cleanup task for video process {self.task_id}: {e}")
+                log.warning(
+                    f"Error in cleanup task for video process {self.task_id}: {e}"
+                )
 
     def _upload_to_minio(self, output_path: str) -> Optional[str]:
         """Upload video to MinIO if enabled and remove local file on success.
@@ -188,7 +190,7 @@ class VideoProcessWorker:
             return uploaded_path
 
         except Exception as e:
-            log.err(f"Failed to upload video to MinIO: {e}")
+            log.error(f"Failed to upload video to MinIO: {e}")
             return None
 
     def _find_relevant_videos(
@@ -223,7 +225,7 @@ class VideoProcessWorker:
                         )
                     )
             except Exception as e:
-                log.err(f"Error processing video {video_file}: {e}")
+                log.error(f"Error processing video {video_file}: {e}")
                 continue
 
         # Sort by start time
@@ -291,7 +293,7 @@ class VideoProcessWorker:
         if result.returncode != 0:
             stderr = (result.stderr or "").strip()
             if stderr:
-                log.err(f"FFmpeg trim error for {video_info.path}: {stderr}")
+                log.error(f"FFmpeg trim error for {video_info.path}: {stderr}")
             raise subprocess.CalledProcessError(
                 result.returncode, cmd, result.stdout, result.stderr
             )
@@ -327,7 +329,7 @@ class VideoProcessWorker:
         if result.returncode != 0:
             stderr = (result.stderr or "").strip()
             if stderr:
-                log.err(
+                log.error(
                     f"FFmpeg concatenation error for {len(video_list)} videos: {stderr}"
                 )
             os.remove(concat_file)
@@ -401,7 +403,7 @@ class VideoProcessQueueManager:
                     self._start_next_task()
 
         except ValueError as e:
-            log.err(f"Invalid end_time format for task {task.id}: {e}")
+            log.error(f"Invalid end_time format for task {task.id}: {e}")
             raise
 
     def _scheduler_loop(self) -> None:
@@ -425,7 +427,7 @@ class VideoProcessQueueManager:
                                 ready_tasks.append(task)
                                 self._scheduled_tasks.remove(task)
                         except Exception as e:
-                            log.err(f"Error checking scheduled task {task.id}: {e}")
+                            log.error(f"Error checking scheduled task {task.id}: {e}")
                             self._scheduled_tasks.remove(task)
 
                     for task in ready_tasks:
@@ -435,7 +437,7 @@ class VideoProcessQueueManager:
                 self._stop_scheduler.wait(1)
 
             except Exception as e:
-                log.err(f"Error in scheduler loop: {e}")
+                log.error(f"Error in scheduler loop: {e}")
                 time.sleep(5)
 
     def get_task_status(self, task_id: UUID) -> Optional[VideoProcessTask]:
