@@ -6,7 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR%/scripts}"
 
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.test.yml"
-NETWORK_NAME=""
+NETWORK_NAME="rtsp_hub_network"
+APP_SERVICE="rtsp-hub"
 
 REBUILD=false
 KEEP_RUNNING=false
@@ -65,11 +66,11 @@ if [[ "$REBUILD" == "true" ]]; then
   if [[ -z "${VERSION}" ]]; then VERSION="0.0.0"; fi
 
   echo "Rebuilding app_test image with VERSION=${VERSION}..."
-  docker-compose -f "$COMPOSE_FILE" build --build-arg VERSION="${VERSION}" app_test
+  docker-compose -f "$COMPOSE_FILE" build --build-arg VERSION="${VERSION}" "${APP_SERVICE}"
 fi
 
 echo "Running tests..."
-docker-compose -f "$COMPOSE_FILE" up --exit-code-from app_test app_test
+docker-compose -f "$COMPOSE_FILE" up --exit-code-from "${APP_SERVICE}" "${APP_SERVICE}"
 
 if [[ "$KEEP_RUNNING" == "true" ]]; then
   echo "Keeping test stack running. Use 'docker-compose -f $COMPOSE_FILE down -v' to clean up manually."

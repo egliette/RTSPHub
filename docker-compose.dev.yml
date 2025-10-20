@@ -1,0 +1,96 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: rtsp_hub_minio_dev
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      TZ: ${TZ:-UTC}
+    command: server /data --console-address ":9001"
+    networks:
+      - rtsp_hub_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  media-service:
+    image: bluenviron/mediamtx:1.15.1
+    container_name: media-service
+    environment:
+      MTX_PATHDEFAULTS_RECORD: ${RECORD_ENABLED}
+      MTX_PATHDEFAULTS_RECORDPATH: ${RECORD_PATH}
+      MTX_PATHDEFAULTS_RECORDFORMAT: ${RECORD_FORMAT}
+      MTX_PATHDEFAULTS_RECORDPARTDURATION: ${RECORD_PART_DURATION}
+      MTX_PATHDEFAULTS_RECORDMAXPARTSIZE: ${RECORD_MAX_PART_SIZE}
+      MTX_PATHDEFAULTS_RECORDSEGMENTDURATION: ${RECORD_SEGMENT_DURATION}
+      MTX_PATHDEFAULTS_RECORDDELETEAFTER: ${RECORD_DELETE_AFTER}
+      MTX_AUTHINTERNALUSERS_0_USER: ${MEDIA_USERNAME}
+      MTX_AUTHINTERNALUSERS_0_PASS: ${MEDIA_PASSWORD}
+      MTX_AUTHINTERNALUSERS_0_PERMISSIONS_0_ACTION: publish
+      MTX_AUTHINTERNALUSERS_0_PERMISSIONS_1_ACTION: read
+      MTX_AUTHINTERNALUSERS_0_PERMISSIONS_2_ACTION: playback
+      MTX_AUTHINTERNALUSERS_0_PERMISSIONS_3_ACTION: api
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml
+      - ./assets/record:${VIDEO_RECORD_PATH}
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      - rtsp_hub_network
+
+  rtsp-hub:
+    image: rtsp-hub:dev
+    build:
+      dockerfile: Dockerfile
+      target: development
+      args:
+        APP_UID: ${APP_UID}
+        APP_GID: ${APP_GID}
+        LOG_DIR: ${LOG_DIR}
+    container_name: rtsp_hub_dev
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      API_TOKEN: ${API_TOKEN}
+      MINIO_ENABLED: ${MINIO_ENABLED}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_SECURE: ${MINIO_SECURE}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MEDIA_SERVER_HOST: ${MEDIA_SERVER_HOST}
+      MEDIA_SERVER_PORT: ${MEDIA_SERVER_PORT}
+      MEDIA_USERNAME: ${MEDIA_USERNAME}
+      MEDIA_PASSWORD: ${MEDIA_PASSWORD}
+      RESTART_BACKOFF_SECONDS: ${RESTART_BACKOFF_SECONDS}
+      VIDEO_RECORD_PATH: ${VIDEO_RECORD_PATH}
+      VIDEO_PROCESSED_PATH: ${VIDEO_PROCESSED_PATH}
+      RECORD_SEGMENT_DURATION: ${RECORD_SEGMENT_DURATION}
+      LOG_DIR: ${LOG_DIR}
+      LOG_TO_STDOUT: ${LOG_TO_STDOUT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_MAX_DAYS: ${LOG_MAX_DAYS}
+    volumes:
+      - ./app:/app/app
+      - ./assets:/app/assets
+      - ./logs:/app/logs
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      media-service:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    command: >
+      sh -c "
+        alembic -c app/alembic.ini upgrade head &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+    tty: true
+    networks:
+      - rtsp_hub_network
+
+networks:
+  rtsp_hub_network:
+    external: true

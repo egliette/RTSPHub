@@ -1,217 +1,240 @@
-# Template Service Skeleton
+# RTSPHub
 
-This repository is a reusable template for new Python services. It includes a sensible project layout, Docker Compose scripts, CI workflows, and logging utilities.
+[![CI Pipeline](https://github.com/egliette/RTSPHub/actions/workflows/ci.yml/badge.svg)](https://github.com/egliette/RTSPHub/actions/workflows/ci.yml)
 
-## 1. 📦 Repository structure
+[![Publish Release to GHCR](https://github.com/egliette/RTSPHub/actions/workflows/publish-release.yml/badge.svg)](https://github.com/egliette/RTSPHub/actions/workflows/publish-release.yml)
 
-- **app/**: Application code
-  - **api/**: Routers/controllers (e.g., FastAPI routers and endpoints)
-  - **core/**: App bootstrap, app factory, DI, security, constants
-  - **config/**: App configuration
-    - `settings.py`: Centralized runtime settings (env-driven)
-  - **crud/**: Data-access helpers built on models/ORM
-  - **database/**: DB engine/session creation and lifecycle
-  - **models/**: ORM models (e.g., SQLAlchemy `Base` and model classes)
-  - **schema/**: Pydantic request/response models
-  - **services/**: Business/domain services and external integrations
-  - **tests/**: Unit/integration tests
-  - **utils/**: Shared utilities
-    - `logger.py`: Structured logging setup and helpers
-  - `main.py`: Application entrypoint (wire routers, middlewares, startup)
-  - `__init__.py`: Package marker
-- **scripts/**: Helper scripts for local dev, testing, and prod-like runs
-  - `dev-compose.sh`: Start the development stack
-  - `test-compose.sh`: Build/run tests in Docker
-  - `prod-compose.sh`: Start a prod-like stack or attach a shell
-- **.github/workflows/**: GitHub Actions CI/CD
-  - `ci.yml`: Lint + build test image + run tests
-  - `auto-bump-and-release.yml`, `publish-release.yml`: Release automation (optional)
-- `docker-compose.yml`, `docker-compose.dev.yml`, `docker-compose.test.yml`: Compose definitions
-- `.pre-commit-config.yaml`: Pre-commit hooks configuration
-- `logs/` (created at runtime): Log files output directory
+A FastAPI-based recording service that connects to RTSP streams, proxies them via MediaMTX, and provides APIs to record and store videos locally or in MinIO.
 
-## 2. 🧩 Essential configuration to set for a new service
+![RTSP Hub diagram](assets/images/rtsp_hub_diagram.png)
 
-- **Service name**
-  - Where: `app/utils/logger.py` and environment variables consumed by logging
-  - Purpose: Identify your service in logs and metrics
-  - How: Set env var `SERVICE_NAME` (and ensure `logger.py` reads it)
+## 1. Overview
 
-- **Docker network name**
-  - Where: GitHub Actions `ci.yml` (env `DOCKER_NETWORK_NAME`) and local scripts
-  - Purpose: Ensure containers communicate on a known network during CI and locally
-  - How: In `.github/workflows/ci.yml`, set `DOCKER_NETWORK_NAME` under `env:`
+RTSPHub is a service designed for camera-related tasks and computer vision applications. It leverages [**MediaMTX**](https://github.com/bluenviron/mediamtx) and provides APIs to retrieve recorded video content based on specific time ranges - a feature not yet available in MediaMTX. This is particularly useful for:
 
-- **Container name(s) for attach-shell flows**
-  - Where: `scripts/dev-compose.sh`, `scripts/prod-compose.sh`
-  - Purpose: Used by the scripts when running `docker exec -it <container> /bin/bash`
-  - How: Set `CONTAINER_NAME` near the top of each script (dev: your dev app container; prod: your prod app container)
+- **Object Detection Tasks**: Extract specific video segments when objects are detected
+- **Evidence Collection**: Retrieve video footage for specific time periods
+- **Computer Vision Pipelines**: Access historical video data for analysis
+- **Surveillance Systems**: Manage multiple camera streams efficiently
 
-- **Compose network for local runs**
-  - Where: `scripts/dev-compose.sh`, `scripts/prod-compose.sh`
-  - Purpose: Ensure a consistent Docker network exists locally
-  - How: Set `NETWORK_NAME` near the top of each script to match your compose files
+## 2. Key Features
 
-- **Log directory and user mapping**
-  - Where: `.env` or environment
-  - Keys: `LOG_DIR`, `APP_UID`, `APP_GID`, `LOG_TO_STDOUT`, `LOG_LEVEL`, `LOG_MAX_DAYS`
-  - Purpose: Make logs writable and correctly owned on host
+1. **Stream Management**: Create proxy streams, monitor health, and manage streams via REST API with automatic recording
+2. **Video Retrieval**: Provide API to return requested video based on time range
+3. **Storage Options**: Local filesystem or MinIO object storage with presigned URLs
+4. **Data Persistence**: Store stream information and task metadata in SQLite
 
-## 3. 🚀 Quick start
+## 3. Installation
 
-1) Create a `.env` at repo root (optional but recommended):
+### Using Docker Compose
 
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd RTSPHub
+   ```
+
+2. **Create environment file:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+3. **Build and start the services:**
+   ```bash
+   # For development
+   ./scripts/dev-compose.sh
+
+   # For production
+   ./scripts/prod-compose.sh
+
+   # For testing
+   ./scripts/test-compose.sh
+   ```
+
+4. **Access the services:**
+   - RTSPHub API: http://localhost:8000
+   - RTSPHub Swagger Documentation: http://localhost:8000/docs
+   - MediaMTX: http://localhost:8889
+   - MinIO Console: http://localhost:9001
+
+## 4. Getting Started - Typical Workflow
+
+Here's a typical user journey to get you started:
+
+### Step 1: Create a Stream
+First, create a proxy stream from your RTSP camera:
 ```bash
-SERVICE_NAME="your_service_name"
-LOG_DIR="logs"
-APP_UID="1000"
-APP_GID="1000"
-LOG_TO_STDOUT="true"
-LOG_LEVEL="INFO"
-LOG_MAX_DAYS="30"
+curl -X POST "http://localhost:8000/api/streams" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "source_uri": "rtsp://your-camera-ip:554/stream",
+       "path": "camera1",
+       "stream_id": "camera1"
+     }'
 ```
 
-2) Update script variables at the top of the relevant scripts:
+### Step 2: Access Your Live Stream
+Once created, you can access your stream at:
+- **RTSP**: `rtsp://localhost:8554/camera1`
 
+### Step 3: Request Video Recording
+When you need a specific time range recorded:
 ```bash
-# scripts/dev-compose.sh
-NETWORK_NAME="your_local_network"
-CONTAINER_NAME="your_dev_container_name"
-
-# scripts/prod-compose.sh
-NETWORK_NAME="your_local_network"
-CONTAINER_NAME="your_prod_container_name"
+curl -X POST "http://localhost:8000/api/video-process/tasks" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "source_rtsp_path": "camera1",
+       "start_time": "2024-01-15 10:00:00",
+       "end_time": "2024-01-15 10:05:00"
+     }'
 ```
 
-3) Update CI network name in `ci.yml`:
-
-```yaml
-env:
-  DOCKER_NETWORK_NAME: your_ci_network
-```
-
-## 4. 🛠️ Scripts usage
-
-- `scripts/dev-compose.sh`
-  - `--rebuild|-r`: Rebuild the app image before starting
-  - `--shell|-s`: Start the app and attach an interactive shell inside the container
-
-- `scripts/prod-compose.sh`
-  - `--rebuild|-r`: Rebuild the app image before starting
-  - `--shell|-s`: Start and attach an interactive shell to the prod container
-  - `--workers|-w N`: Set the number of workers when running the app
-
-- `scripts/test-compose.sh`
-  - Builds and runs tests via `docker compose` using `docker-compose.test.yml`
-
-## 5. ✅ CI overview
-
-- Linting: `isort` and `black` run against `app/`
-- Tests: Builds the test image, creates a CI network (`DOCKER_NETWORK_NAME`), runs tests, and cleans up
-
-## 6. 📝 Notes
-
-- Ensure `CONTAINER_NAME` matches the actual container name from your compose files when using `--shell`.
-- Ensure `NETWORK_NAME` in scripts and `DOCKER_NETWORK_NAME` in CI are consistent with your compose definitions.
-- The `logs/` directory is created on startup if missing; permissions are adjusted using `APP_UID`/`APP_GID`.
-
-## 7. 🗃️ Alembic migrations (under `app/alembic`)
-
-This template supports Alembic with migration scripts stored in `app/alembic`.
-
-### 7.1 ⚙️ One-time setup
-
-1) Install Alembic (in your environment or dev container):
-
+### Step 4: Get Your Video
+Check task status and get your processed video:
 ```bash
-pip install alembic
+# Check status
+curl "http://localhost:8000/api/video-process/tasks/{task_id}"
+
+# Download video (if using local storage)
+# Or use the presigned URL (if using MinIO)
 ```
 
-2) Initialize Alembic pointing to `app/alembic` (run from repo root):
-
+### Step 5: Clean Up
+When done, remove the stream:
 ```bash
-alembic init app/alembic
+curl -X DELETE "http://localhost:8000/api/streams/camera1"
 ```
 
-This creates `app/alembic/` with `env.py` and a `versions/` directory, plus an `alembic.ini` in the repo root.
+## 5. API Reference & Detailed Usage
 
-3) Edit `alembic.ini` to set the script location and DB URL source:
+### Available Endpoints
 
-```ini
-script_location = app/alembic
-sqlalchemy.url = %(DATABASE_URL)s
-```
+**Stream Management:**
+- `POST /api/streams` - Create a new proxy stream
+- `GET /api/streams` - List all active streams
+- `DELETE /api/streams/{stream_id}` - Remove a stream
+- `GET /api/streams/{stream_id}/health` - Check stream health
 
-Provide `DATABASE_URL` via environment when running Alembic.
+**Video Processing:**
+- `POST /api/video-process/tasks` - Create video processing task
+- `GET /api/video-process/tasks` - List all video tasks
+- `GET /api/video-process/tasks/{task_id}` - Get task status
+- `DELETE /api/video-process/tasks/{task_id}` - Delete task
+- `DELETE /api/video-process/tasks/{task_id}/video` - Delete video file based on task ID
 
-4) Wire your models’ metadata in `app/alembic/env.py` so autogenerate works. Example:
+### Stream Management Workflow
 
-```python
-from app.models.base import Base  # adjust to your Base definition
+1. **Create a Stream**
+   ```bash
+   curl -X POST "http://localhost:8000/api/streams" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "source_uri": "rtsp://your-camera-ip:554/stream",
+          "path": "camera1",
+          "stream_id": "camera1"
+        }'
+   ```
 
-target_metadata = Base.metadata
-```
+2. **Get Proxy Stream URL**
+   After creating a stream, you can access the proxy stream at:
+   ```
+   rtsp://localhost:8554/camera1
+   ```
+   Or via HTTP for web players:
+   ```
+   http://localhost:8889/camera1/index.m3u8
+   ```
 
-Ensure imports here do not require full app startup.
+3. **Monitor Stream Health**
+   ```bash
+   curl "http://localhost:8000/api/streams/camera1/health"
+   ```
 
-### 7.2 📜 Common commands (run from repo root)
+4. **List All Streams**
+   ```bash
+   curl "http://localhost:8000/api/streams"
+   ```
 
-- Create a new migration (autogenerate):
+5. **Stop/Delete Stream**
+   ```bash
+   # Stop stream
+   curl -X POST "http://localhost:8000/api/streams/camera1/stop"
 
-```bash
-alembic revision --autogenerate -m "create users table"
-```
+   # Delete stream
+   curl -X DELETE "http://localhost:8000/api/streams/camera1"
+   ```
 
-- Apply latest migrations:
+### Video Processing Workflow
 
-```bash
-alembic upgrade head
-```
+1. **Create Video Processing Task**
 
-- Downgrade one step:
+   **Option A: Using start_time and end_time**
+   ```bash
+   curl -X POST "http://localhost:8000/api/video-process/tasks" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "source_rtsp_path": "camera1",
+          "start_time": "2024-01-15 10:00:00",
+          "end_time": "2024-01-15 10:05:00"
+        }'
+   ```
 
-```bash
-alembic downgrade -1
-```
+   **Option B: Using start_time and duration_seconds**
+   ```bash
+   curl -X POST "http://localhost:8000/api/video-process/tasks" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "source_rtsp_path": "camera1",
+          "start_time": "2024-01-15 10:00:00",
+          "duration_seconds": 300
+        }'
+   ```
 
-### 7.3 🧭 Where to run
+2. **Check Task Status**
+   ```bash
+   curl "http://localhost:8000/api/video-process/tasks/{task_id}"
+   ```
 
-- Run Alembic commands from the repository root so `alembic.ini` is discovered.
-- Migrations live under `app/alembic/versions/`.
+3. **Access Processed Video & Storage Configuration**
 
-## 8. 🔁 Pre-commit hooks
+   **Storage Type Selection:**
+   - Configure storage type in your `.env` file using `MINIO_ENABLED=true/false`
+   - MinIO service is pre-configured in the Docker Compose files
 
-This template includes `.pre-commit-config.yaml` to enforce formatting and basic hygiene locally before commits.
+   **Local Storage (when MinIO is disabled):**
+   - Videos are stored in the directory specified by `VIDEO_PROCESSED_PATH` in your `.env` file
+   - Default path: `/app/assets/processed_videos` (inside container)
+   - **Important**: You must mount this path in your Docker Compose configuration
+   - Mount example: `./assets/processed_videos:/app/assets/processed_videos`
+   - Access directly via file path returned in the response
 
-### 8.1 ⚙️ One-time setup
+   **MinIO Storage (when MinIO is enabled):**
+   - Videos are stored in MinIO bucket with presigned URLs for secure access
+   - URLs are valid for a limited time (default: 24 hours)
+   - MinIO console available at http://localhost:9001
+   - Configure MinIO settings in `.env` file (see `.env.template` for all options)
 
-```bash
-pip install pre-commit
-pre-commit install
-```
+4. **List All Tasks**
+   ```bash
+   curl "http://localhost:8000/api/video-process/tasks"
+   ```
 
-This installs the git hook so checks run automatically on `git commit`.
+5. **Delete Task and Video**
+   ```bash
+   # Delete task record only
+   curl -X DELETE "http://localhost:8000/api/video-process/tasks/{task_id}"
 
-### 8.2 ▶️ Run manually
+   # Delete video file
+   curl -X DELETE "http://localhost:8000/api/video-process/tasks/{task_id}/video"
+   ```
 
-Run on all files (good first run to normalize the repo):
+## 6. TODO
 
-```bash
-pre-commit run --all-files
-```
-
-Run only changed files (what happens on commit):
-
-```bash
-pre-commit run
-```
-
-### 8.3 🧩 What runs
-
-Configured hooks typically include:
-
-- isort (imports ordering with Black profile)
-- black (code formatting)
-- end-of-file-fixer, trailing-whitespace, mixed-line-ending, etc.
-
-See `.pre-commit-config.yaml` to adjust versions or add hooks.
+- [x] Handle edge case where the requested time range is currently being recorded
+- [x] Handle edge case where the requested time range overlaps on the left with existing recorded videos (start_time < oldest_video_start_time < end_time)
+- [x] Allow recording in the future (end time in the future)
+- [x] Add route to request from time + duration
+- [ ] Update logger to use standard methods
+- [ ] Update to async implementation
+- [ ] Auto generate documentation
