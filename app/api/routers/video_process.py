@@ -36,7 +36,7 @@ def _get_video_uri(task: VideoProcessTask) -> str:
 
 
 @router.post("/tasks", response_model=VideoProcessResponse)
-async def create_video_task(request: VideoProcessRequest):
+def create_video_task(request: VideoProcessRequest):
     """Create a new video processing task (trim/merge)."""
     try:
         start_time = request.start_time
@@ -70,7 +70,7 @@ async def create_video_task(request: VideoProcessRequest):
 
 
 @router.get("/tasks", response_model=List[VideoProcessStatus])
-async def list_video_tasks():
+def list_video_tasks():
     """List all video processing tasks."""
     try:
         tasks = video_service.list_all_tasks()
@@ -90,7 +90,7 @@ async def list_video_tasks():
 
 
 @router.get("/tasks/{task_id}", response_model=VideoProcessStatus)
-async def get_video_task_status(task_id: str):
+def get_video_task_status(task_id: str):
     """Get the status of a specific video processing task."""
     try:
         task = video_service.get_task_status(task_id)
@@ -109,7 +109,7 @@ async def get_video_task_status(task_id: str):
 
 
 @router.delete("/tasks/{task_id}")
-async def delete_video_task(task_id: str):
+def delete_video_task(task_id: str):
     """Delete a specific video processing task by id.
 
     Stops active processing if running, removes pending tasks, and deletes the record.
@@ -127,7 +127,7 @@ async def delete_video_task(task_id: str):
 
 
 @router.delete("/tasks/{task_id}/video")
-async def delete_video_file(task_id: str):
+def delete_video_file(task_id: str):
     """Delete the video file associated with a specific task.
 
     Deletes the actual video file from storage (local filesystem or MinIO).
