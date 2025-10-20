@@ -235,3 +235,5 @@ curl -X DELETE "http://localhost:8000/api/streams/camera1"
 - [ ] Add stress test
 - [ ] Add perfomance test
 - [ ] Add Fallback mechanism for crashed cameras
+- [ ] Check number of workers and ffmpeg workers, CPU percentages usage
+- [ ] Add Hardware requirements
