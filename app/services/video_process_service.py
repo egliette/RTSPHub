@@ -53,7 +53,7 @@ class VideoProcessService:
             # Only check for files if folder exists; otherwise skip to time validation
             video_files = [f for f in os.listdir(video_folder) if f.endswith(".mp4")]
             if not video_files:
-                raise ValueError("No .mp4 video files found in the source folder")
+                raise ValueError(f"No .mp4 video files found for {source_rtsp_path}")
 
         # Validate and parse time strings
         try:
